@@ -69,18 +69,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _fetchEmails(User user) async {
     try {
+      final token = await user.getIdToken();
+      print('Token: $token'); // Be careful with logging tokens in production
+
       final response = await http.post(
-        Uri.parse('https://fetch-emails-2ghwz42v7q-uc.a.run.app'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'accessToken': await user.getIdToken()}),
+        Uri.parse('http://127.0.0.1:5001/otron-email-426615/us-central1/fetch_emails'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'accessToken': token}),
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         setState(() {
-          _emails = jsonDecode(response.body); // Parse the JSON response
+          _emails = jsonDecode(response.body);
         });
       } else {
-        print('Failed to fetch emails: ${response.statusCode}');
+        print('Error: ${response.reasonPhrase}');
       }
     } catch (e) {
       print('Error fetching emails: $e');
