@@ -1,0 +1,46 @@
+{
+  "flutter": {
+    "platforms": {
+      "ios": {
+        "default": {
+          "projectId": "otron-email-426615",
+          "appId": "1:750411337406:ios:b50b57ae12343ce35198ef",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "otron-email-426615",
+          "appId": "1:750411337406:ios:b50b57ae12343ce35198ef",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "otron-email-426615",
+          "configurations": {
+            "ios": "1:750411337406:ios:b50b57ae12343ce35198ef",
+            "macos": "1:750411337406:ios:b50b57ae12343ce35198ef",
+            "web": "1:750411337406:web:fcdcbfc80b617e985198ef",
+            "windows": "1:750411337406:web:955158aa5a51f1745198ef"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}
