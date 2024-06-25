@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:home/services/auth_services.dart';
+import 'package:home/services/email_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:home/widgets/email_list.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +49,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final AuthService _authService = AuthService();
+  final EmailService _emailService = EmailService();
   String? _userName;
   List<dynamic>? _emails;
 
@@ -60,40 +61,18 @@ class _MyHomePageState extends State<MyHomePage> {
           _userName = user.displayName;
         });
         print('Signed in as ${user.displayName}');
-        _fetchEmails(user);
+        _fetchEmails();
       }
     } catch (e) {
       print('Sign in error: $e');
     }
   }
 
-  void _fetchEmails(User user) async {
-    try {
-      final token = await user.getIdToken();
-      print('Token: $token'); // Be careful with logging tokens in production
-
-      final response = await http.post(
-        Uri.parse('http://127.0.0.1:5001/otron-email-426615/us-central1/fetch_emails'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'accessToken': token}),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _emails = jsonDecode(response.body);
-        });
-      } else {
-        print('Error: ${response.reasonPhrase}');
-      }
-    } catch (e) {
-      print('Error fetching emails: $e');
-    }
+  void _fetchEmails() async {
+    final emails = await _emailService.fetchEmails();
+    setState(() {
+      _emails = emails;
+    });
   }
 
   @override
@@ -114,16 +93,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: const Text('Sign in with Google'),
             ),
             if (_emails != null)
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _emails?.length ?? 0,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(_emails![index]['snippet'] ?? 'No snippet'),
-                    );
-                  },
-                ),
-              ),
+              EmailList(emails: _emails!),
           ],
         ),
       ),

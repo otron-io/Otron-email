@@ -1,7 +1,11 @@
 from firebase_functions import https_fn, options
-from firebase_admin import initialize_app
+from firebase_admin import initialize_app, auth
 from firebase_functions.https_fn import Request, Response
 import json
+import google.auth.transport.requests
+from google.oauth2 import id_token
+from googleapiclient.discovery import build
+from google.auth.exceptions import GoogleAuthError
 
 initialize_app()
 
@@ -23,13 +27,48 @@ def fetch_emails(request: Request) -> Response:
     print(f"Request headers: {request.headers}")
     print(f"Request body: {request.get_json()}")
 
-    sample_emails = [
-        {"snippet": "Email 1 snippet"},
-        {"snippet": "Email 2 snippet"},
-        {"snippet": "Email 3 snippet"}
-    ]
-    response = Response(json.dumps(sample_emails), status=200)
-    return response
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return Response(json.dumps({'error': 'Unauthorized'}), status=401)
+
+    id_token_str = auth_header.split('Bearer ')[1]
+
+    try:
+        # Verify the ID token
+        decoded_token = auth.verify_id_token(id_token_str)
+        user_id = decoded_token['uid']
+        print(f"Decoded token: {decoded_token}")
+
+        # Use the ID token to fetch emails from Gmail
+        request_adapter = google.auth.transport.requests.Request()
+        id_info = id_token.verify_oauth2_token(id_token_str, request_adapter)
+        print(f"ID info: {id_info}")
+
+        credentials = google.oauth2.credentials.Credentials(id_token_str)
+        service = build('gmail', 'v1', credentials=credentials)
+        print("Gmail service built successfully")
+
+        results = service.users().messages().list(userId='me', maxResults=10).execute()
+        print(f"Gmail API response: {results}")
+
+        messages = results.get('messages', [])
+        print(f"Messages: {messages}")
+
+        emails = []
+        for message in messages:
+            msg = service.users().messages().get(userId='me', id=message['id']).execute()
+            snippet = msg.get('snippet', 'No snippet')
+            emails.append({'snippet': snippet})
+
+        response = Response(json.dumps(emails), status=200)
+        return response
+
+    except GoogleAuthError as e:
+        print(f"Google Auth Error: {e}")
+        return Response(json.dumps({'error': f'Google Auth Error: {str(e)}'}), status=500)
+    except Exception as e:
+        print(f"Error verifying ID token or fetching emails: {e}")
+        return Response(json.dumps({'error': f'Failed to fetch emails: {str(e)}'}), status=500)
 
 # Export the function
 fetch_emails_fn = fetch_emails
