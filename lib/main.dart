@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:home/services/auth_services.dart';
 import 'package:home/services/email_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:home/widgets/email_list.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,31 +46,20 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final AuthService _authService = AuthService();
   final EmailService _emailService = EmailService();
   String? _userName;
   List<dynamic>? _emails;
 
-  void _signIn() async {
-    try {
-      User? user = await _authService.signInWithGoogle();
-      if (user != null) {
-        setState(() {
-          _userName = user.displayName;
-        });
-        print('Signed in as ${user.displayName}');
-        _fetchEmails();
-      }
-    } catch (e) {
-      print('Sign in error: $e');
-    }
-  }
-
   void _fetchEmails() async {
-    final emails = await _emailService.fetchEmails();
-    setState(() {
-      _emails = emails;
-    });
+    try {
+      final emails = await _emailService.fetchEmails();
+      setState(() {
+        _emails = emails;
+        _userName = _emailService.userName;
+      });
+    } catch (e) {
+      print('Error fetching emails: $e');
+    }
   }
 
   @override
@@ -89,8 +76,8 @@ class _MyHomePageState extends State<MyHomePage> {
             if (_userName != null)
               Text('Hi $_userName', style: TextStyle(fontSize: 24)),
             ElevatedButton(
-              onPressed: _signIn,
-              child: const Text('Sign in with Google'),
+              onPressed: _fetchEmails,
+              child: const Text('Fetch Emails'),
             ),
             if (_emails != null)
               EmailList(emails: _emails!),

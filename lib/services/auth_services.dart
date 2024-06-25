@@ -1,3 +1,5 @@
+// THis is no longer used, but could be reused when we need to log people in.
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';

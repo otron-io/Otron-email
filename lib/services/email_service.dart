@@ -12,6 +12,8 @@ class EmailService {
     ],
   );
 
+  String? userName;
+
   Future<List<dynamic>?> fetchEmails() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -19,6 +21,8 @@ class EmailService {
         print('Sign in aborted by user');
         return null;
       }
+
+      userName = googleUser.displayName;
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
