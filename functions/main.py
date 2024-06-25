@@ -70,5 +70,28 @@ def fetch_emails(request: Request) -> Response:
         print(f"Error verifying ID token or fetching emails: {e}")
         return Response(json.dumps({'error': f'Failed to fetch emails: {str(e)}'}), status=500)
 
-# Export the function
-fetch_emails_fn = fetch_emails
+@https_fn.on_request(
+    cors=options.CorsOptions(
+        cors_origins="*",  # Allow all origins
+        cors_methods=["GET", "POST", "OPTIONS"]  # Allow GET, POST, and OPTIONS methods
+    )
+)
+def classify(request: Request) -> Response:
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = Response(json.dumps({'message': 'CORS preflight'}), status=200)
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
+
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            message = data.get('message', 'No message provided')
+            result = f"Classified message: {message}"
+            return Response(json.dumps({'result': result}), status=200)
+        except Exception as e:
+            print(f"Error in classify endpoint: {e}")
+            return Response(json.dumps({'error': f'Failed to classify: {str(e)}'}), status=500)
+    else:
+        return Response(json.dumps({'error': 'Method not allowed'}), status=405)

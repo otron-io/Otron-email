@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:home/services/email_service.dart';
+import 'package:home/services/vertex_ai_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:home/widgets/email_list.dart';
+import 'package:home/widgets/generated_text_display.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,18 +51,43 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final EmailService _emailService = EmailService();
+  final VertexAIService _vertexAIService = VertexAIService();
   String? _userName;
-  List<dynamic>? _emails;
+  List<String>? _snippets;
+  final List<String> _streamedContent = [];
 
   void _fetchEmails() async {
     try {
-      final emails = await _emailService.fetchEmails();
+      final snippets = await _emailService.fetchEmails();
       setState(() {
-        _emails = emails;
+        _snippets = snippets;
         _userName = _emailService.userName;
       });
     } catch (e) {
       print('Error fetching emails: $e');
+    }
+  }
+
+  void _classify() async {
+    setState(() {
+      _streamedContent.clear();
+    });
+
+    if (_snippets == null || _snippets!.isEmpty) {
+      print('No snippets available for classification');
+      return;
+    }
+
+    final prompt = 'Classify the following email snippets. Try to determine if they could be called a Newsletter (something I would actively subscribe to to read).Simply return - Newsletter or Other:\n' + _snippets!.join('\n');
+
+    try {
+      await for (final chunk in _vertexAIService.generateContentStream(prompt)) {
+        setState(() {
+          _streamedContent.add(chunk);
+        });
+      }
+    } catch (e) {
+      print('Error classifying: $e');
     }
   }
 
@@ -70,18 +99,26 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (_userName != null)
-              Text('Hi $_userName', style: TextStyle(fontSize: 24)),
-            ElevatedButton(
-              onPressed: _fetchEmails,
-              child: const Text('Fetch Emails'),
-            ),
-            if (_emails != null)
-              EmailList(emails: _emails!),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (_userName != null)
+                Text('Hi $_userName', style: TextStyle(fontSize: 24)),
+              ElevatedButton(
+                onPressed: _fetchEmails,
+                child: const Text('Fetch Emails'),
+              ),
+              if (_snippets != null)
+                EmailList(emails: _snippets!),
+              ElevatedButton(
+                onPressed: _classify,
+                child: const Text('Classify'),
+              ),
+              if (_streamedContent.isNotEmpty)
+                GeneratedTextDisplay(streamedContent: _streamedContent),
+            ],
+          ),
         ),
       ),
     );

@@ -14,7 +14,7 @@ class EmailService {
 
   String? userName;
 
-  Future<List<dynamic>?> fetchEmails() async {
+  Future<List<String>?> fetchEmails() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -52,15 +52,15 @@ class EmailService {
       );
 
       // Print the message IDs and fetch message details
-      final emails = <Map<String, dynamic>>[];
+      final snippets = <String>[];
       if (response.messages != null) {
         for (final Message message in response.messages!) {
           final msg = await gmailApi.users.messages.get('me', message.id!);
-          emails.add({'snippet': msg.snippet});
+          snippets.add(msg.snippet ?? '');
         }
       }
 
-      return emails;
+      return snippets;
     } catch (e) {
       print('Error fetching emails: $e');
       return null;
