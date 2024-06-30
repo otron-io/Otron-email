@@ -8,14 +8,51 @@ class GeneratedTextDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
-      padding: EdgeInsets.all(16),
+      constraints: BoxConstraints(maxWidth: 800),
+      padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
+        color: Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
-        children: streamedContent.map((chunk) => Text(chunk, style: TextStyle(fontSize: 16))).toList(),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your Podcast',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
+          ),
+          SizedBox(height: 16),
+          Container(
+            height: 300, // Adjust this value as needed
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: streamedContent.map((chunk) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Text(
+                    chunk,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -24,9 +24,11 @@ dependencies:
   googleapis_auth: ^1.4.1  # Aligned with googleapis
 
   # Vertex AI & Gemini
-  firebase_vertexai: ^0.2.1
+  firebase_vertexai: ^0.2.2+1
 
   cupertino_icons: ^1.0.6
+  html: ^0.15.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -36,6 +38,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/.env
+    - assets/audio/Joseph.mp3
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:

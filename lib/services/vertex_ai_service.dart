@@ -7,6 +7,14 @@ class VertexAIService {
   VertexAIService() : _vertexAI = FirebaseVertexAI.instance;
 
   Future<String> generateContent(String promptText) async {
+    return await _generateContent(promptText, isStream: false);
+  }
+
+  Stream<String> generateContentStream(String promptText) async* {
+    yield* _generateContentStream(promptText);
+  }
+
+  Future<String> _generateContent(String promptText, {required bool isStream}) async {
     final model = _vertexAI.generativeModel(model: 'gemini-1.5-flash');
     final prompt = [Content.text(promptText)];
 
@@ -19,7 +27,7 @@ class VertexAIService {
     }
   }
 
-  Stream<String> generateContentStream(String promptText) async* {
+  Stream<String> _generateContentStream(String promptText) async* {
     final model = _vertexAI.generativeModel(model: 'gemini-1.5-flash');
     final prompt = [Content.text(promptText)];
 

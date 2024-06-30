@@ -6,6 +6,11 @@ import google.auth.transport.requests
 from google.oauth2 import id_token
 from googleapiclient.discovery import build
 from google.auth.exceptions import GoogleAuthError
+import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 initialize_app()
 
@@ -93,5 +98,53 @@ def classify(request: Request) -> Response:
         except Exception as e:
             print(f"Error in classify endpoint: {e}")
             return Response(json.dumps({'error': f'Failed to classify: {str(e)}'}), status=500)
+    else:
+        return Response(json.dumps({'error': 'Method not allowed'}), status=405)
+
+@https_fn.on_request(
+    cors=options.CorsOptions(
+        cors_origins="*",  # Allow all origins
+        cors_methods=["GET", "POST, OPTIONS"]  # Allow GET, POST, and OPTIONS methods
+    )
+)
+def generate_audio(request: Request) -> Response:
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = Response(json.dumps({'message': 'CORS preflight'}), status=200)
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
+
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            voice_id = data.get('voice_id')
+            text = data.get('text')
+            model_id = data.get('model_id')
+            voice_settings = data.get('voice_settings')
+            pronunciation_dictionary_locators = data.get('pronunciation_dictionary_locators')
+            seed = data.get('seed')
+
+            api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f"Bearer {os.getenv('ELEVENLABS_API_KEY')}"
+            }
+            payload = {
+                "text": text,
+                "model_id": model_id,
+                "voice_settings": voice_settings,
+                "pronunciation_dictionary_locators": pronunciation_dictionary_locators,
+                "seed": seed
+            }
+
+            response = requests.post(api_url, headers=headers, json=payload)
+            response.raise_for_status()
+
+            return Response(response.content, mimetype='audio/mpeg')
+
+        except Exception as e:
+            print(f"Error in generate_audio endpoint: {e}")
+            return Response(json.dumps({'error': f'Failed to generate audio: {str(e)}'}), status=500)
     else:
         return Response(json.dumps({'error': 'Method not allowed'}), status=405)
