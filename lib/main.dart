@@ -29,7 +29,7 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-@override
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Otron Email',
@@ -72,6 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Map<String, String>>? _emails;
   final List<String> _streamedContent = [];
   bool _isLoading = false;
+  bool _showWelcomeScreen = true;
 
   void _fetchEmails() async {
     setState(() {
@@ -83,6 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _emails = emails;
         _userName = _emailService.userName;
         _isLoading = false;
+        _showWelcomeScreen = false; // Hide welcome screen after fetching emails
       });
     } catch (e) {
       print('Error fetching emails: $e');
@@ -134,54 +136,103 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Container(
               constraints: BoxConstraints(maxWidth: 800),
               padding: EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(
-                    'Otron Email',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 24),
-                  if (_emails == null) 
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _fetchEmails,
-                      child: _isLoading 
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                          )
-                        : Text('Fetch Emails'),
-                    ),
-                  if (_emails != null) ...[
-                    EmailList(emails: _emails!),
-                    SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _generatePodcast,
-                      child: _isLoading
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                          )
-                        : Text('Generate Podcast'),
-                    ),
-                  ],
-                  SizedBox(height: 24),
-                  if (_streamedContent.isNotEmpty) ...[
-                    AudioPlayerWidget(audioPath: 'audio/Joseph.mp3'),
-                    SizedBox(height: 24),
-                    GeneratedTextDisplay(streamedContent: _streamedContent),
-                  ],
-                ],
-              ),
+              child: _showWelcomeScreen ? _buildWelcomeScreen() : _buildMainContent(),
             ),
           ),
         ),
       ),
     );
-  }}
+  }
+
+  Widget _buildWelcomeScreen() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SizedBox(height: 100), // Add space at the top to center content vertically
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: Theme.of(context).primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+            children: [
+              TextSpan(text: 'Turn your this week\'s '),
+              TextSpan(
+                text: 'buildspace',
+                style: TextStyle(color: Colors.orange), // Different color for "buildspace"
+              ),
+              TextSpan(text: ' newsletters into a personalised podcast'),
+            ],
+          ),
+        ),
+        SizedBox(height: 24),
+        Text(
+          'Experience your newsletters in a whole new way. Generate a personalized podcast from your weekly newsletters and listen on the go!',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Color(0xFF666666),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 48),
+        Center(
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _fetchEmails,
+            child: _isLoading 
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                )
+              : Text('Generate it now'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(200, 50), // Adjust button size
+            ),
+          ),
+        ),
+        SizedBox(height: 100), // Add space at the bottom to center content vertically
+      ],
+    );
+  }
+
+  Widget _buildMainContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (_emails != null) ...[
+          EmailList(emails: _emails!),
+          SizedBox(height: 24),
+          if (_streamedContent.isEmpty)
+            ElevatedButton(
+              onPressed: _isLoading ? null : _generatePodcast,
+              child: _isLoading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                  )
+                : Text('Generate Podcast'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(200, 50), // Adjust button size
+              ),
+            )
+          else
+            Tooltip(
+              message: 'Update your podcast [unavailable]',
+              child: IconButton(
+                onPressed: null,
+                icon: Icon(Icons.refresh, color: Colors.grey),
+              ),
+            ),
+        ],
+        SizedBox(height: 24),
+        if (_streamedContent.isNotEmpty) ...[
+          AudioPlayerWidget(audioPath: 'audio/Joseph.mp3'),
+          SizedBox(height: 24),
+          GeneratedTextDisplay(streamedContent: _streamedContent),
+        ],
+      ],
+    );
+  }
+}

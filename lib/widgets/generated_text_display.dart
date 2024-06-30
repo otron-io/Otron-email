@@ -25,7 +25,7 @@ class GeneratedTextDisplay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your Podcast',
+            'Your podcast',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
