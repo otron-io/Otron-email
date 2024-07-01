@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:home/widgets/email_list.dart';
 import 'package:home/widgets/generated_text_display.dart';
 import 'package:home/widgets/audio_player_widget.dart';
-import 'package:http/http.dart' as http;
+import 'package:home/theme/theme.dart'; // Import the theme
 import 'dart:convert';
 import 'package:home/prompt.dart';
 
@@ -33,24 +33,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Otron Email',
-      theme: ThemeData(
-        primaryColor: Color(0xFF3A86FF),
-        scaffoldBackgroundColor: Colors.white,
-        textTheme: TextTheme(
-          titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
-          bodyMedium: TextStyle(fontSize: 16, color: Color(0xFF333333)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF3A86FF),
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      ),
+      theme: appTheme, // Apply the theme
       home: const MyHomePage(title: 'Otron Email'),
     );
   }
@@ -161,7 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
               TextSpan(text: 'Turn your this week\'s '),
               TextSpan(
                 text: 'buildspace',
-                style: TextStyle(color: Colors.orange), // Different color for "buildspace"
+                style: TextStyle(color: Colors.black), // Different color for "buildspace"
               ),
               TextSpan(text: ' newsletters into a personalised podcast'),
             ],
@@ -228,7 +211,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         SizedBox(height: 24),
         if (_streamedContent.isNotEmpty) ...[
-          AudioPlayerWidget(audioPath: 'audio/Joseph.mp3'),
+          AudioPlayerWidget(audioPath: 'audio/Josephv2.mp3'),
           SizedBox(height: 24),
           GeneratedTextDisplay(streamedContent: _streamedContent),
         ],

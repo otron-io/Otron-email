@@ -12,7 +12,7 @@ Please summarize the email newsletters for the past week into a spoken language 
 - The names of the newsletters or senders
 - Specific details from the email body to provide a clear understanding of the content
 
-Ensure the language is clear and natural for audio playback, as if reading aloud to a listener. Narrate the output in the style and tone of the newsletter itself, using specific phrases and maintaining the original style. Start with an engaging introduction to set the stage for the podcast.
+Ensure the language is clear and natural for audio playback, as if reading aloud to a listener. Narrate the output in the style and tone of the newsletter itself, using specific phrases and maintaining the original style. Start with an engaging introduction to set the stage for the podcast. Please add snarky/observant commentary reviewing the content yourself.
 
 Example Input:
 {

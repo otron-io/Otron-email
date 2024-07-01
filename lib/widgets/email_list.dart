@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:home/theme/colors.dart'; // Import the color palette
+import 'package:home/widgets/custom_tooltip.dart'; // Import the custom tooltip
 
 class EmailList extends StatelessWidget {
   final List<Map<String, String>> emails;
@@ -16,11 +18,7 @@ class EmailList extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Text(
               'Emails',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
-              ),
+              style: Theme.of(context).textTheme.headlineMedium, // Use theme text style
             ),
           ),
           Container(
@@ -31,6 +29,7 @@ class EmailList extends StatelessWidget {
                 final email = emails[index];
                 return Container(
                   decoration: BoxDecoration(
+                    color: Colors.white,
                     border: Border(
                       bottom: BorderSide(color: Colors.grey[200]!, width: 1),
                     ),
@@ -41,7 +40,7 @@ class EmailList extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: Color(0xFF3A86FF),
+                          backgroundColor: AppColors.primary,
                           child: Text(
                             email['from']?.substring(0, 1).toUpperCase() ?? '?',
                             style: TextStyle(color: Colors.white, fontSize: 14),
@@ -58,20 +57,26 @@ class EmailList extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF333333),
+                                  color: AppColors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               SizedBox(height: 4),
-                              Text(
-                                email['subject'] ?? 'No Subject',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF333333),
+                              Container(
+                                constraints: BoxConstraints(maxWidth: 200), // Constrain width
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Text(
+                                    email['subject'] ?? 'No Subject',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -83,23 +88,28 @@ class EmailList extends StatelessWidget {
                             email['date'] ?? '',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF8338EC),
+                              color: AppColors.secondary,
                             ),
                             textAlign: TextAlign.right,
                           ),
                         ),
                         SizedBox(width: 16),
+                        CustomTooltip(
+                          message: email['body'] ?? 'No content',
+                          child: Icon(Icons.info_outline, color: AppColors.primary),
+                        ),
+                        SizedBox(width: 16),
                         if (email['labels'] != null && email['labels']!.isNotEmpty)
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2), // Smaller padding
                             decoration: BoxDecoration(
-                              color: Color(0xFFFF006E),
+                              color: AppColors.secondary, // Softer secondary color
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               email['labels']!,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 10, // Smaller font size
                                 color: Colors.white,
                               ),
                             ),

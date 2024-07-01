@@ -38,7 +38,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/.env
-    - assets/audio/Joseph.mp3
+    - assets/audio/Josephv2.mp3
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:home/theme/colors.dart'; // Import the color palette
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioPath;
@@ -18,7 +19,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  double _playbackRate = 1.5;
+  double _playbackRate = 1.25; // Set default playback rate to 1.25
 
   @override
   void initState() {
@@ -26,7 +27,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     _setupAudioPlayer();
   }
 
-  void _setupAudioPlayer() {
+  void _setupAudioPlayer() async {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       setState(() {
         _isPlaying = state == PlayerState.playing;
@@ -45,8 +46,14 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       });
     });
 
-    _audioPlayer.setSource(AssetSource(widget.audioPath));
-    _audioPlayer.setPlaybackRate(_playbackRate);
+    await _audioPlayer.setSource(AssetSource(widget.audioPath));
+    await _audioPlayer.setPlaybackRate(_playbackRate);
+    _startPlaying(); // Start playing after setting the source and playback rate
+  }
+
+  Future<void> _startPlaying() async {
+    print('Starting playback at $_playbackRate speed');
+    await _audioPlayer.resume();
   }
 
   String _formatDuration(Duration duration) {
@@ -91,10 +98,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         children: [
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: Color(0xFF3A86FF),
+              activeTrackColor: AppColors.primary,
               inactiveTrackColor: Color(0xFFE0E0E0),
-              thumbColor: Color(0xFF3A86FF),
-              overlayColor: Color(0xFF3A86FF).withOpacity(0.2),
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primary.withOpacity(0.2),
             ),
             child: Slider(
               value: _position.inSeconds.toDouble(),
@@ -111,8 +118,8 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_formatDuration(_position), style: TextStyle(color: Color(0xFF333333), fontSize: 14)),
-                Text(_formatDuration(_duration), style: TextStyle(color: Color(0xFF333333), fontSize: 14)),
+                Text(_formatDuration(_position), style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                Text(_formatDuration(_duration), style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
               ],
             ),
           ),
@@ -121,20 +128,20 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: Icon(Icons.replay_10, color: Color(0xFF3A86FF)),
+                icon: Icon(Icons.replay_10, color: AppColors.primary),
                 onPressed: () {
                   _audioPlayer.seek(_position - Duration(seconds: 10));
                 },
               ),
               SizedBox(width: 16),
               FloatingActionButton(
-                backgroundColor: Color(0xFF3A86FF),
+                backgroundColor: AppColors.primary,
                 child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
                 onPressed: _togglePlayPause,
               ),
               SizedBox(width: 16),
               IconButton(
-                icon: Icon(Icons.forward_10, color: Color(0xFF3A86FF)),
+                icon: Icon(Icons.forward_10, color: AppColors.primary),
                 onPressed: () {
                   _audioPlayer.seek(_position + Duration(seconds: 10));
                 },
@@ -145,13 +152,13 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Speed: ", style: TextStyle(color: Color(0xFF333333), fontSize: 14)),
+              Text("Speed: ", style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
               DropdownButton<double>(
                 value: _playbackRate,
                 items: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((rate) {
                   return DropdownMenuItem(
                     value: rate,
-                    child: Text("${rate}x", style: TextStyle(color: Color(0xFF333333), fontSize: 14)),
+                    child: Text("${rate}x", style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -160,7 +167,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                     _audioPlayer.setPlaybackRate(_playbackRate);
                   });
                 },
-                style: TextStyle(color: Color(0xFF3A86FF)),
+                style: TextStyle(color: AppColors.primary),
               ),
             ],
           ),

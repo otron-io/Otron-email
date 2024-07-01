@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:home/theme/colors.dart'; // Import the color palette
 
 class GeneratedTextDisplay extends StatelessWidget {
   final List<String> streamedContent;
@@ -11,7 +12,7 @@ class GeneratedTextDisplay extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: 800),
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Color(0xFFF5F5F5),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -29,7 +30,7 @@ class GeneratedTextDisplay extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
           SizedBox(height: 16),
@@ -45,7 +46,7 @@ class GeneratedTextDisplay extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       height: 1.5,
-                      color: Color(0xFF333333),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 )).toList(),
