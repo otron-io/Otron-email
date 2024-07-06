@@ -1,3 +1,4 @@
+// --IMPORTS--
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -37,7 +38,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List<Map<String, String>> _podcasts = [];
+  List<Map<String, dynamic>> _podcasts = [];
 
   @override
   void initState() {
@@ -77,7 +78,7 @@ Widget _buildMaterialApp() {
     );
   }
 
-  void addPodcast(Map<String, String> newPodcast) {
+  void addPodcast(Map<String, dynamic> newPodcast) {
     setState(() {
       _podcasts.insert(0, newPodcast);
     });
@@ -95,8 +96,8 @@ Future<String> callHelloWorldFunction() async {
 }
 
 class HomePage extends StatefulWidget {
-  final List<Map<String, String>> podcasts;
-  final Function(Map<String, String>) onAddPodcast;
+  final List<Map<String, dynamic>> podcasts;
+  final Function(Map<String, dynamic>) onAddPodcast;
 
   const HomePage({Key? key, required this.podcasts, required this.onAddPodcast}) : super(key: key);
 

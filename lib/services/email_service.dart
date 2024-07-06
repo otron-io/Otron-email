@@ -91,8 +91,12 @@ class EmailService {
 
       return emailDetails;
     } catch (e) {
+      if (e.toString().contains('popup_closed')) {
+        print('Email fetching was cancelled by the user');
+        return null;
+      }
       print('Error fetching emails: $e');
-      return null;
+      rethrow;  // Re-throw other errors to be caught in the calling code
     }
   }
 

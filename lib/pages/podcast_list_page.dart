@@ -3,13 +3,13 @@ import 'package:home/pages/podcast_creation_page.dart';
 import 'package:home/widgets/podcast_card.dart';
 
 class PodcastListPage extends StatelessWidget {
-  final Function(Map<String, String>) onAddPodcast;
-  final List<Map<String, String>> podcasts;
+  final List<Map<String, dynamic>> podcasts;
+  final Function(Map<String, dynamic>) onAddPodcast;
 
   const PodcastListPage({
     Key? key,
-    required this.onAddPodcast,
     required this.podcasts,
+    required this.onAddPodcast,
   }) : super(key: key);
 
   @override
@@ -70,7 +70,7 @@ class PodcastListPage extends StatelessWidget {
     );
   }
 
-  void _openPodcastDetails(BuildContext context, Map<String, String> podcast) {
+  void _openPodcastDetails(BuildContext context, Map<String, dynamic> podcast) {
     // Implement podcast details page navigation
   }
 }

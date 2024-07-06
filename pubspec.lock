@@ -696,6 +696,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  m3_carousel:
+    dependency: "direct main"
+    description:
+      name: m3_carousel
+      sha256: "9610787fe93ba3212f8dd2346ff47fdb5d9d91211c4a288c57493de07fa0e4af"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   matcher:
     dependency: transitive
     description:
