@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:home/theme/colors.dart'; // Import the color palette
+import 'package:home/theme/theme.dart'; // Import the theme
 
 class CustomTooltip extends StatefulWidget {
   final Widget child;
@@ -34,7 +34,7 @@ class _CustomTooltipState extends State<CustomTooltip> {
                   width: 550,
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: Theme.of(context).colorScheme.background,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
@@ -46,7 +46,7 @@ class _CustomTooltipState extends State<CustomTooltip> {
                   ),
                   child: Text(
                     widget.message,
-                    style: TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
                     textAlign: TextAlign.center,
                   ),
                 ),

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:home/services/email_service.dart';
 import 'package:home/services/vertex_ai_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:home/widgets/email_list.dart';
-import 'package:home/widgets/generated_text_display.dart';
-import 'package:home/widgets/audio_player_widget.dart';
-import 'package:home/theme/theme.dart'; // Import the theme
-import 'dart:convert';
-import 'package:home/prompt.dart';
+import 'package:home/pages/welcome_page.dart';
+import 'package:home/pages/podcast_list_page.dart';
+import 'package:home/pages/podcast_creation_page.dart';
+import 'package:home/theme/theme.dart';
+import 'package:http/http.dart' as http;
+import 'package:home/podcasts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,203 +21,139 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    
+    final response = await callHelloWorldFunction();
+    print('Hello World Function Response: $response');
   } catch (e) {
-    print('Firebase initialization error: $e');
+    print('Error: $e');
   }
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  List<Map<String, String>> _podcasts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _podcasts = List.from(podcasts);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return _buildApp();
+  }
+
+  Widget _buildApp() {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
+      return _buildMaterialApp();
+    } else {
+      return _buildCupertinoApp();
+    }
+  }
+
+Widget _buildMaterialApp() {
+  return MaterialApp(
+    title: 'Otron Email',
+    theme: appTheme,
+    home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
+  );
+}
+
+  Widget _buildCupertinoApp() {
+    return CupertinoApp(
       title: 'Otron Email',
-      theme: appTheme, // Apply the theme
-      home: const MyHomePage(title: 'Otron Email'),
+      theme: CupertinoThemeData(
+        primaryColor: appTheme.colorScheme.primary,
+        brightness: appTheme.brightness,
+      ),
+      home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
     );
+  }
+
+  void addPodcast(Map<String, String> newPodcast) {
+    setState(() {
+      _podcasts.insert(0, newPodcast);
+    });
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+Future<String> callHelloWorldFunction() async {
+  final url = 'https://hello-world-2ghwz42v7q-uc.a.run.app';
+  final response = await http.get(Uri.parse(url));
+  if (response.statusCode == 200) {
+    return response.body;
+  } else {
+    throw Exception('Failed to call Hello World function');
+  }
+}
 
-  final String title;
+class HomePage extends StatefulWidget {
+  final List<Map<String, String>> podcasts;
+  final Function(Map<String, String>) onAddPodcast;
+
+  const HomePage({Key? key, required this.podcasts, required this.onAddPodcast}) : super(key: key);
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final EmailService _emailService = EmailService();
-  final VertexAIService _vertexAIService = VertexAIService();
-  String? _userName;
-  List<Map<String, String>>? _emails;
-  final List<String> _streamedContent = [];
-  bool _isLoading = false;
-  bool _showWelcomeScreen = true;
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
 
-  void _fetchEmails() async {
+  void _onItemTapped(int index) {
     setState(() {
-      _isLoading = true;
+      _selectedIndex = index;
     });
-    try {
-      final emails = await _emailService.fetchEmails();
-      setState(() {
-        _emails = emails;
-        _userName = _emailService.userName;
-        _isLoading = false;
-        _showWelcomeScreen = false; // Hide welcome screen after fetching emails
-      });
-    } catch (e) {
-      print('Error fetching emails: $e');
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
-  void _generatePodcast() async {
-    if (_emails == null || _emails!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fetch emails first')),
-      );
-      return;
-    }
-
+  void _navigateToPodcastList() {
     setState(() {
-      _isLoading = true;
-      _streamedContent.clear();
+      _selectedIndex = 1;
     });
-
-    final prompt = emailSummaryPrompt.replaceFirst(
-      '{Placeholder for raw email data}',
-      jsonEncode(_emails),
-    );
-
-    try {
-      await for (final chunk in _vertexAIService.generateContentStream(prompt)) {
-        setState(() {
-          _streamedContent.add(chunk);
-        });
-      }
-    } catch (e) {
-      print('Error generating podcast: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 800),
-              padding: EdgeInsets.all(24),
-              child: _showWelcomeScreen ? _buildWelcomeScreen() : _buildMainContent(),
-            ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          WelcomePage(onGetStarted: _navigateToPodcastList),
+          PodcastListPage(
+            onAddPodcast: widget.onAddPodcast,
+            podcasts: widget.podcasts,
           ),
-        ),
+          PodcastCreationPage(
+            onAddPodcast: (newPodcast) {
+              widget.onAddPodcast(newPodcast);
+              setState(() {
+                _selectedIndex = 1;
+              });
+            },
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildWelcomeScreen() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SizedBox(height: 100), // Add space at the top to center content vertically
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.bold,
-            ),
-            children: [
-              TextSpan(text: 'Turn your this week\'s '),
-              TextSpan(
-                text: 'buildspace',
-                style: TextStyle(color: Colors.black), // Different color for "buildspace"
-              ),
-              TextSpan(text: ' newsletters into a personalised podcast'),
-            ],
+      bottomNavigationBar: NavigationBar(
+        onDestinationSelected: _onItemTapped,
+        selectedIndex: _selectedIndex,
+        destinations: [
+          NavigationDestination(
+            icon: Icon(Icons.home, color: appTheme.colorScheme.primary),
+            label: 'Home',
           ),
-        ),
-        SizedBox(height: 24),
-        Text(
-          'Experience your newsletters in a whole new way. Generate a personalized podcast from your weekly newsletters and listen on the go!',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Color(0xFF666666),
+          NavigationDestination(
+            icon: Icon(Icons.list, color: appTheme.colorScheme.primary),
+            label: 'Podcasts',
           ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 48),
-        Center(
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _fetchEmails,
-            child: _isLoading 
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                )
-              : Text('Generate it now'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size(200, 50), // Adjust button size
-            ),
-          ),
-        ),
-        SizedBox(height: 100), // Add space at the bottom to center content vertically
-      ],
-    );
-  }
-
-  Widget _buildMainContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (_emails != null) ...[
-          EmailList(emails: _emails!),
-          SizedBox(height: 24),
-          if (_streamedContent.isEmpty)
-            ElevatedButton(
-              onPressed: _isLoading ? null : _generatePodcast,
-              child: _isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                  )
-                : Text('Generate Podcast'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(200, 50), // Adjust button size
-              ),
-            )
-          else
-            Tooltip(
-              message: 'Update your podcast [unavailable]',
-              child: IconButton(
-                onPressed: null,
-                icon: Icon(Icons.refresh, color: Colors.grey),
-              ),
-            ),
         ],
-        SizedBox(height: 24),
-        if (_streamedContent.isNotEmpty) ...[
-          AudioPlayerWidget(audioPath: 'audio/Josephv2.mp3'),
-          SizedBox(height: 24),
-          GeneratedTextDisplay(streamedContent: _streamedContent),
-        ],
-      ],
+      ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:home/theme/colors.dart'; // Import the color palette
+import 'package:home/theme/theme.dart'; // Import the theme
 
 class GeneratedTextDisplay extends StatelessWidget {
   final List<String> streamedContent;
@@ -12,7 +12,7 @@ class GeneratedTextDisplay extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: 800),
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: Theme.of(context).colorScheme.background,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -27,10 +27,8 @@ class GeneratedTextDisplay extends StatelessWidget {
         children: [
           Text(
             'Your podcast',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onBackground,
             ),
           ),
           SizedBox(height: 16),
@@ -43,10 +41,9 @@ class GeneratedTextDisplay extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: Text(
                     chunk,
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       height: 1.5,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onBackground,
                     ),
                   ),
                 )).toList(),

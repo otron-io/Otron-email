@@ -1,14 +1,17 @@
-import 'dart:convert'; // Add this import for base64 decoding
+// --IMPORTS--
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/gmail/v1.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:html/parser.dart' show parse; // Add this import for HTML parsing
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart';
 
+// --CLASS DEFINITION--
 class EmailService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: dotenv.env['GOOGLE_CLIENT_ID'], // Reference from .env
+    clientId: dotenv.env['GOOGLE_CLIENT_ID'],
     scopes: [
       GmailApi.gmailReadonlyScope,
     ],
@@ -16,7 +19,8 @@ class EmailService {
 
   String? userName;
 
-  Future<List<Map<String, String>>?> fetchEmails() async {
+  // --FETCH EMAILS METHOD--
+  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -26,40 +30,35 @@ class EmailService {
 
       userName = googleUser.displayName;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Create an authenticated HTTP client
       final authClient = authenticatedClient(
         http.Client(),
         AccessCredentials(
           AccessToken(
             'Bearer',
             googleAuth.accessToken!,
-            DateTime.now().toUtc().add(Duration(hours: 1)), // Ensure UTC format
+            DateTime.now().toUtc().add(Duration(hours: 1)),
           ),
           googleAuth.idToken,
           [GmailApi.gmailReadonlyScope],
         ),
       );
 
-      // Create a Gmail API client using the authenticated client
       final GmailApi gmailApi = GmailApi(authClient);
 
-      // Call the users.messages.list method with labelIds filter and date filter for last week
-      final DateTime now = DateTime.now().toUtc();
-      final DateTime lastWeek = now.subtract(Duration(days: 7));
-      final String lastWeekFormatted = (lastWeek.millisecondsSinceEpoch ~/ 1000).toString();
+      final DateTime startDate = DateTime.utc(2024, 7, 1);
+      final DateTime endDate = DateTime.utc(2024, 7, 7, 23, 59, 59);
+      final String startDateFormatted = (startDate.millisecondsSinceEpoch ~/ 1000).toString();
+      final String endDateFormatted = (endDate.millisecondsSinceEpoch ~/ 1000).toString();
 
-      final ListMessagesResponse response =
-          await gmailApi.users.messages.list(
-        'me', // Use 'me' to indicate the authenticated user
-        //maxResults: 10,
+      final String domainQuery = domains.map((domain) => 'from:$domain').join(' OR ');
+      final ListMessagesResponse response = await gmailApi.users.messages.list(
+        'me',
         labelIds: ['CATEGORY_UPDATES', 'INBOX'],
-        q: 'after:$lastWeekFormatted from:@buildspace.so',
+        q: 'after:$startDateFormatted before:$endDateFormatted ($domainQuery) -from:notifications@buildspace.so',
       );
-      // Fetch message details
-      final emailDetails = <Map<String, String>>[];
+      final emailDetails = <Map<String, dynamic>>[];
       if (response.messages != null) {
         for (final Message message in response.messages!) {
           final msg = await gmailApi.users.messages.get('me', message.id!);
@@ -73,8 +72,9 @@ class EmailService {
             orElse: () => MessagePartHeader(name: 'Subject', value: 'No Subject'),
           ).value ?? 'No Subject';
 
-          // Decode the body content
           final body = _getBody(msg.payload);
+          final urls = _extractUrls(body);
+          final embeddedImages = await _getEmbeddedImages(gmailApi, 'me', message.id!, msg.payload!);
 
           emailDetails.add({
             'id': message.id!,
@@ -83,6 +83,8 @@ class EmailService {
             'subject': subjectHeader,
             'labels': msg.labelIds?.join(', ') ?? 'No Labels',
             'body': body,
+            'urls': urls,
+            'embeddedImages': embeddedImages,
           });
         }
       }
@@ -94,6 +96,7 @@ class EmailService {
     }
   }
 
+  // --GET BODY METHOD--
   String _getBody(MessagePart? part) {
     if (part == null) return 'No Body';
 
@@ -114,8 +117,48 @@ class EmailService {
     return 'No Body';
   }
 
+  // --STRIP HTML METHOD--
   String _stripHtmlIfNeeded(String body) {
     final document = parse(body);
     return document.body?.text ?? body;
+  }
+
+  // --EXTRACT URLS METHOD--
+  List<String> _extractUrls(String text) {
+    final urlRegex = RegExp(r'https?://\S+');
+    return urlRegex.allMatches(text)
+        .map((match) => match.group(0)!)
+        .toSet()
+        .toList();
+  }
+
+  // --GET EMBEDDED IMAGES METHOD--
+  Future<List<Map<String, String>>> _getEmbeddedImages(GmailApi gmailApi, String userId, String messageId, MessagePart part) async {
+    List<Map<String, String>> embeddedImages = [];
+
+    if (part.mimeType?.startsWith('image/') == true && part.body?.attachmentId != null) {
+      embeddedImages.add({
+        'filename': part.filename ?? 'embedded_image',
+        'mimeType': part.mimeType!,
+        'attachmentId': part.body!.attachmentId!,
+      });
+    }
+
+    if (part.parts != null) {
+      for (var subPart in part.parts!) {
+        embeddedImages.addAll(await _getEmbeddedImages(gmailApi, userId, messageId, subPart));
+      }
+    }
+
+    return embeddedImages;
+  }
+
+  // --GET ATTACHMENT DATA METHOD--
+  Future<List<int>> _getAttachmentData(GmailApi gmailApi, String userId, String messageId, String attachmentId) async {
+    final attachment = await gmailApi.users.messages.attachments.get(userId, messageId, attachmentId);
+    if (attachment.data != null) {
+      return base64Url.decode(attachment.data!);
+    }
+    return [];
   }
 }

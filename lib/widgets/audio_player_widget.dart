@@ -1,59 +1,116 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:home/theme/colors.dart'; // Import the color palette
+import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioPath;
 
-  const AudioPlayerWidget({
-    Key? key,
-    required this.audioPath,
-  }) : super(key: key);
+  const AudioPlayerWidget({Key? key, required this.audioPath}) : super(key: key);
 
   @override
   _AudioPlayerWidgetState createState() => _AudioPlayerWidgetState();
 }
 
 class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  late AudioPlayer _audioPlayer;
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  double _playbackRate = 1.25; // Set default playback rate to 1.25
+  double _playbackRate = 1.25;
+  double _progress = 0.0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
     _setupAudioPlayer();
+    _loadAudio();
   }
 
-  void _setupAudioPlayer() async {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
+  void _setupAudioPlayer() {
+    _audioPlayer.playerStateStream.listen((state) {
       setState(() {
-        _isPlaying = state == PlayerState.playing;
+        _isPlaying = state.playing;
+        if (state.processingState == ProcessingState.completed) {
+          _progress = 1.0;
+          _timer?.cancel();
+        }
       });
     });
-
-    _audioPlayer.onDurationChanged.listen((newDuration) {
+    _audioPlayer.durationStream.listen((newDuration) {
       setState(() {
-        _duration = newDuration;
+        _duration = newDuration ?? Duration.zero;
       });
     });
-
-    _audioPlayer.onPositionChanged.listen((newPosition) {
+    _audioPlayer.positionStream.listen((newPosition) {
       setState(() {
         _position = newPosition;
+        _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
       });
     });
+  }
 
-    await _audioPlayer.setSource(AssetSource(widget.audioPath));
-    await _audioPlayer.setPlaybackRate(_playbackRate);
-    _startPlaying(); // Start playing after setting the source and playback rate
+  Future<void> _loadAudio() async {
+    try {
+      print('Loading audio from path: ${widget.audioPath}');
+      await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse("asset:///${widget.audioPath}")));
+      await _audioPlayer.setSpeed(_playbackRate);
+    } catch (e) {
+      print('Error loading audio: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load audio: ${e.toString()}')),
+      );
+    }
   }
 
   Future<void> _startPlaying() async {
-    print('Starting playback at $_playbackRate speed');
-    await _audioPlayer.resume();
+    try {
+      await _audioPlayer.play();
+      setState(() {
+        _isPlaying = true;
+      });
+      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+        setState(() {
+          _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
+        });
+      });
+    } catch (e) {
+      print('Error playing audio: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to play audio: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _togglePlayPause() async {
+    try {
+      if (_isPlaying) {
+        await _audioPlayer.pause();
+        setState(() {
+          _isPlaying = false;
+        });
+        _timer?.cancel();
+      } else {
+        if (_position >= _duration) {
+          // Reset the audio if it has reached the end
+          await _audioPlayer.seek(Duration.zero);
+        }
+        await _startPlaying();
+      }
+    } catch (e) {
+      print('Error toggling play/pause: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to toggle play/pause: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    _timer?.cancel();
+    super.dispose();
   }
 
   String _formatDuration(Duration duration) {
@@ -63,111 +120,73 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
-  Future<void> _togglePlayPause() async {
-    if (_isPlaying) {
-      await _audioPlayer.pause();
-    } else {
-      await _audioPlayer.resume();
-    }
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      constraints: BoxConstraints(maxWidth: 800),
-      padding: EdgeInsets.all(24),
+      constraints: BoxConstraints(maxWidth: 600),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: theme.colorScheme.onSurface.withOpacity(0.05),
+            blurRadius: 5,
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: AppColors.primary,
-              inactiveTrackColor: Color(0xFFE0E0E0),
-              thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withOpacity(0.2),
-            ),
-            child: Slider(
-              value: _position.inSeconds.toDouble(),
-              min: 0,
-              max: _duration.inSeconds.toDouble(),
-              onChanged: (value) {
-                final position = Duration(seconds: value.toInt());
-                _audioPlayer.seek(position);
-              },
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_formatDuration(_position), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface)),
+              Text(_formatDuration(_duration), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface)),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_formatDuration(_position), style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                Text(_formatDuration(_duration), style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              ],
-            ),
-          ),
-          SizedBox(height: 16),
+          LinearProgressIndicator(value: _progress),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: Icon(Icons.replay_10, color: AppColors.primary),
+                icon: Icon(Icons.replay_10, color: theme.colorScheme.primary, size: 20),
                 onPressed: () {
                   _audioPlayer.seek(_position - Duration(seconds: 10));
                 },
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 8),
               FloatingActionButton(
-                backgroundColor: AppColors.primary,
-                child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                mini: true,
+                backgroundColor: theme.colorScheme.primary,
+                child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: theme.colorScheme.onPrimary, size: 20),
                 onPressed: _togglePlayPause,
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 8),
               IconButton(
-                icon: Icon(Icons.forward_10, color: AppColors.primary),
+                icon: Icon(Icons.forward_10, color: theme.colorScheme.primary, size: 20),
                 onPressed: () {
                   _audioPlayer.seek(_position + Duration(seconds: 10));
                 },
               ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text("Speed: ", style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              SizedBox(width: 16),
               DropdownButton<double>(
                 value: _playbackRate,
                 items: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((rate) {
                   return DropdownMenuItem(
                     value: rate,
-                    child: Text("${rate}x", style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                    child: Text("${rate}x", style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface)),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _playbackRate = value!;
-                    _audioPlayer.setPlaybackRate(_playbackRate);
+                    _audioPlayer.setSpeed(_playbackRate);
                   });
                 },
-                style: TextStyle(color: AppColors.primary),
+                style: TextStyle(color: theme.colorScheme.primary, fontSize: 12),
               ),
             ],
           ),
