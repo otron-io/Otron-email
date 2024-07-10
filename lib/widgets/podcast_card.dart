@@ -135,19 +135,21 @@ class _PodcastCardState extends State<PodcastCard> {
                   GeneratedTextDisplay(
                     streamedContent: [widget.podcast['content'] ?? 'No content available'],
                   ),
-                  if (widget.podcast['urls'] != null && widget.podcast['urls']!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  if (widget.podcast['extractedUrls'] != null &&
+                      (widget.podcast['extractedUrls'] as List).isNotEmpty) ...[
                     Text(
                       'Related Links',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
-                    ...widget.podcast['urls']!.split(', ').map((url) => 
+                    ...(widget.podcast['extractedUrls'] as List<Map<String, String>>).map((urlData) =>
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4.0),
                         child: TextButton(
-                          onPressed: () => _launchUrl(url),
+                          onPressed: () => _launchUrl(urlData['url']!),
                           child: Text(
-                            url,
+                            urlData['description']!,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                             ),

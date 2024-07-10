@@ -26,11 +26,20 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -53,31 +62,4 @@ class DefaultFirebaseOptions {
     measurementId: 'G-WM6D2QWDP9',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBsQmyE_g1e9chnimBrlmXmYHVGYLx48a4',
-    appId: '1:750411337406:ios:b50b57ae12343ce35198ef',
-    messagingSenderId: '750411337406',
-    projectId: 'otron-email-426615',
-    storageBucket: 'otron-email-426615.appspot.com',
-    iosBundleId: 'com.example.home',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBsQmyE_g1e9chnimBrlmXmYHVGYLx48a4',
-    appId: '1:750411337406:ios:b50b57ae12343ce35198ef',
-    messagingSenderId: '750411337406',
-    projectId: 'otron-email-426615',
-    storageBucket: 'otron-email-426615.appspot.com',
-    iosBundleId: 'com.example.home',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBpz3Y1x_3iHQOnp8yMEn7ZV-C2fmTIvmQ',
-    appId: '1:750411337406:web:955158aa5a51f1745198ef',
-    messagingSenderId: '750411337406',
-    projectId: 'otron-email-426615',
-    authDomain: 'otron-email-426615.firebaseapp.com',
-    storageBucket: 'otron-email-426615.appspot.com',
-    measurementId: 'G-2LN5D4CCP0',
-  );
 }

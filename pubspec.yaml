@@ -1,3 +1,4 @@
+
 name: home
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -11,9 +12,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  firebase_core: ^3.1.1
-  firebase_auth: ^5.1.0
-
   google_sign_in: ^6.2.1
   google_sign_in_web: ^0.12.4+1
 
@@ -22,9 +20,6 @@ dependencies:
   # Google APIs (Gmail)
   googleapis: ^13.0.0  # Updated for better compatibility
   googleapis_auth: ^1.4.1  # Aligned with googleapis
-
-  # Vertex AI & Gemini
-  firebase_vertexai: ^0.2.2+1
 
   cupertino_icons: ^1.0.6
   html: ^0.15.0
@@ -43,6 +38,10 @@ dependencies:
   url_launcher: ^6.2.5
   just_audio: ^0.9.34
   m3_carousel: ^1.0.0
+  firebase_vertexai: ^0.1.1
+  firebase_core: ^2.25.4
+  cloud_firestore: ^4.15.4
+  intl: ^0.18.0
 
 dev_dependencies:
   flutter_test:

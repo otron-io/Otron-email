@@ -40,3 +40,56 @@ Next, an email from Farza titled 'n&w s5 -- w1 wrap up. ty all.' Lab #1 was a hi
 
 That's all for this week's highlights. Stay updated and keep up the great work!"
 ''';
+
+const String emailUrlExtractionPrompt = '''
+Please read all of these emails: {Placeholder for raw email data}
+
+Instructions:
+Review all the content of the emails and extract any relevant URLs. Emails will have lots of unnecessary URLs for content in the email and other gimmicks, but we only want a list of URLs that were meant as calls to action. You should also return a clear indication of what the link is about, like:
+
+RSVP to event: www.rsvpweb.com/event/123
+
+Example Input:
+{
+  "emails": [
+    {
+      "subject": "ur a legend – update #1 submitted.",
+      "sender": "buildspace",
+      "body": "sup arnoldas. just wanted to let you know, we got your s5 week #1 update — fk yea. btw -- if you need to make some changes to your update, click here. many people don't ever make it past step one. they overthink, and overcomplicate. but, you didn’t. keep it up. we'll see you in the next one."
+    },
+    {
+      "subject": "n&w s5 -- w1 wrap up. ty all.",
+      "sender": "Farza",
+      "body": "hey s5. lab #1 was actually really fun. we reviewed ~20 ideas of yours live with the team + guests. YouTube recording to lecture #1 here, lab #1 here. (the streams aren't actually 2+hrs long btw, we just do lofi cowork sessions at the end) weekly 1 update due in 3-days. next steps: read through the week 1 guide if you haven't. submit the week 1 update directly to sage using the form here. rsvp for the next two streams here (click in on each one, and rsvp individually). and, if you missed kickoff, go here. that's all! really happy that most people are being really nice to each other online/with their feedback :). okay, bye everyone have fun. p.s: if you wanna make a meme with josh, here you go lol. - farza"
+    }
+  ]
+}
+
+Example Output:
+[
+  {
+    "description": "Make changes to your update",
+    "url": "https://www.buildspace.com/update/modify"
+  },
+  {
+    "description": "YouTube recording to lecture #1",
+    "url": "https://www.youtube.com/watch?v=lecture1"
+  },
+  {
+    "description": "YouTube recording to lab #1",
+    "url": "https://www.youtube.com/watch?v=lab1"
+  },
+  {
+    "description": "Submit the week 1 update directly to Sage",
+    "url": "https://www.sage.com/submit/update1"
+  },
+  {
+    "description": "RSVP for the next two streams",
+    "url": "https://www.eventbrite.com/e/stream1"
+  },
+  {
+    "description": "Missed kickoff",
+    "url": "https://www.buildspace.com/kickoff"
+  }
+]
+''';

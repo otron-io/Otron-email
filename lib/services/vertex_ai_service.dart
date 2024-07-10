@@ -10,7 +10,18 @@ class VertexAIService {
 
   Future<void> _initializeModel() async {
     await Firebase.initializeApp();
-    _model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-pro');
+    
+    final safetySettings = [
+      SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+      SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+      SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+      SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+    ];
+
+    _model = FirebaseVertexAI.instance.generativeModel(
+      model: 'gemini-1.5-flash',
+      safetySettings: safetySettings,
+    );
   }
 
   Future<String> generateContent(String prompt) async {

@@ -3,8 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Otron Email</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="A new Flutter project.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
   <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
   <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyBpz3Y1x_3iHQOnp8yMEn7ZV-C2fmTIvmQ",
+      authDomain: "otron-email-426615.firebaseapp.com",
+      projectId: "otron-email-426615",
+      storageBucket: "otron-email-426615.appspot.com",
+      messagingSenderId: "750411337406",
+      appId: "1:750411337406:web:fcdcbfc80b617e985198ef",
+      measurementId: "G-WM6D2QWDP9"
+    };
+    firebase.initializeApp(firebaseConfig);
+
     function initializeGapi() {
       gapi.load('client:auth2', function() {
         gapi.auth2.init({
@@ -20,15 +38,10 @@
   </script>
   <base href="$FLUTTER_BASE_HREF">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-  <!-- Other meta tags and scripts -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Otron email">
   <meta name="flutter-web-url-launcher" content="true">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png"/>
-  <link rel="manifest" href="manifest.json">
   <meta name="google-signin-client_id" content="750411337406-mq8gph17m7djdae4omvedgpqisd8tgnr.apps.googleusercontent.com">
 </head>
 <body onload="initializeGapi()">

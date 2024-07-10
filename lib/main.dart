@@ -1,3 +1,4 @@
+
 // --IMPORTS--
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -20,13 +21,17 @@ void main() async {
 
   try {
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      options: DefaultFirebaseOptions.currentPlatform, // Ensure correct platform options
     );
-    
-    final response = await callHelloWorldFunction();
-    print('Hello World Function Response: $response');
+    print('Firebase initialized successfully');
+
+    // Rest of your initialization code...
   } catch (e) {
-    print('Error: $e');
+    print('Error during initialization: $e');
+    if (e is FirebaseException) {
+      print('Firebase error code: ${e.code}');
+      print('Firebase error message: ${e.message}');
+    }
   }
 
   runApp(MyApp());
@@ -59,13 +64,13 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-Widget _buildMaterialApp() {
-  return MaterialApp(
-    title: 'Otron Email',
-    theme: appTheme,
-    home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
-  );
-}
+  Widget _buildMaterialApp() {
+    return MaterialApp(
+      title: 'Otron Email',
+      theme: appTheme,
+      home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
+    );
+  }
 
   Widget _buildCupertinoApp() {
     return CupertinoApp(
