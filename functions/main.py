@@ -30,6 +30,7 @@ This script defines three HTTP endpoints using Firebase Functions. Each endpoint
     - **Error Handling**: Catches and returns errors related to audio generation and general exceptions.
 """
 
+# --IMPORTS--
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app
 from firebase_functions.https_fn import Request, Response
@@ -50,7 +51,7 @@ client = ElevenLabs(
 def text_to_speech_stream(text: str) -> IO[bytes]:
     # Perform the text-to-speech conversion
     response = client.text_to_speech.convert(
-        voice_id="pNInz6obpgDQGcFmaJgB", # Adam pre-made voice
+        voice_id="Zlb1dXrM653N07WRdFW3", # Joseph
         optimize_streaming_latency="0",
         output_format="mp3_22050_32",
         text=text,
@@ -99,7 +100,14 @@ def TTS(request: Request) -> Response:
                 return Response(json.dumps({'error': 'Text is required'}), status=400)
 
             audio_stream = text_to_speech_stream(text)
-            return Response(audio_stream.read(), status=200, mimetype='audio/mpeg')
+            def generate():
+                while True:
+                    chunk = audio_stream.read(1024)
+                    if not chunk:
+                        break
+                    yield chunk
+
+            return Response(generate(), status=200, mimetype='audio/mpeg', direct_passthrough=True)
         except Exception as e:
             return Response(json.dumps({'error': str(e)}), status=500)
 

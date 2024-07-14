@@ -1,54 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:home/theme/theme.dart'; // Import the theme
 
-class GeneratedTextDisplay extends StatelessWidget {
+class GeneratedTextDisplay extends StatefulWidget {
   final List<String> streamedContent;
 
   const GeneratedTextDisplay({Key? key, required this.streamedContent}) : super(key: key);
 
   @override
+  _GeneratedTextDisplayState createState() => _GeneratedTextDisplayState();
+}
+
+class _GeneratedTextDisplayState extends State<GeneratedTextDisplay> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(maxWidth: 800),
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.background,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 0,
+      child: ExpansionPanelList(
+        elevation: 0,
+        expandedHeaderPadding: EdgeInsets.zero,
+        expansionCallback: (int index, bool isExpanded) {
+          setState(() {
+            _isExpanded = !_isExpanded;
+          });
+        },
         children: [
-          Text(
-            'Your podcast',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onBackground,
-            ),
-          ),
-          SizedBox(height: 16),
-          Container(
-            height: 300, // Adjust this value as needed
-            child: SingleChildScrollView(
+          ExpansionPanel(
+            headerBuilder: (BuildContext context, bool isExpanded) {
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: NetworkImage('https://i.ibb.co/xHhxjms/podcast-icon.png'),
+                  radius: 25,
+                ),
+                title: Text(
+                  'Your podcast',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                subtitle: Text(
+                  'Generated content',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            },
+            body: Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: streamedContent.map((chunk) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Text(
-                    chunk,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.5,
-                      color: Theme.of(context).colorScheme.onBackground,
+                children: [
+                  Container(
+                    height: 300, // Adjust this value as needed
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: widget.streamedContent.map((chunk) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Text(
+                            chunk,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              height: 1.5,
+                              color: Theme.of(context).colorScheme.onBackground,
+                            ),
+                          ),
+                        )).toList(),
+                      ),
                     ),
                   ),
-                )).toList(),
+                ],
               ),
             ),
+            isExpanded: _isExpanded,
           ),
         ],
       ),

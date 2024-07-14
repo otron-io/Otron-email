@@ -92,4 +92,6 @@ Example Output:
     "url": "https://www.buildspace.com/kickoff"
   }
 ]
+
+Please only return JSON - no other words, keys or anything else, just pure json.
 ''';

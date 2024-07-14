@@ -2,17 +2,19 @@
 import 'package:flutter/material.dart';
 import 'package:home/services/email_service.dart';
 import 'package:home/services/vertex_ai_service.dart';
-import 'package:home/widgets/domain_selection_widget.dart';
-import 'package:home/widgets/air_day_selection_widget.dart';
-import 'package:home/widgets/email_review_widget.dart';
-import 'package:home/widgets/schedule_podcast_widget.dart';
-import 'package:home/widgets/generate_sample_widget.dart';
-import 'package:home/widgets/feedback_dialog.dart';
+import 'package:dropdown_search/dropdown_search.dart';
+import 'package:home/widgets/email_list.dart';
 import 'package:home/prompt.dart';
-import 'package:home/domains.dart';
+import 'package:home/widgets/podcast_card.dart';
 import 'package:home/podcasts.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:home/widgets/generate_sample_widget.dart';
+import 'package:home/widgets/audio_player_widget.dart';
+import 'package:home/widgets/newsletter_selection_widget.dart';
+import 'package:home/newsletters.dart'; // Add this import
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // --PODCAST CREATION PAGE CLASS--
 class PodcastCreationPage extends StatefulWidget {
@@ -30,23 +32,26 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   final VertexAIService _vertexAIService = VertexAIService();
   int _currentStep = 0;
   bool _isLoading = false;
-  List<String> _selectedDomains = [];
+  String _loadingMessage = '';
   String _airDay = 'Sunday';
   List<Map<String, dynamic>> _fetchedEmails = [];
-  List<String> _availableDomains = [];
   final bool _enableLastTwoSteps = false;
   Map<String, dynamic>? _generatedPodcast;
+  List<String> _availableNewsletters = [];
+  List<String> _selectedNewsletters = [];
+  List<String> _customFilters = [];
+  bool _isSignedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAvailableDomains();
+    _loadAvailableNewsletters();
   }
 
-  Future<void> _loadAvailableDomains() async {
+  Future<void> _loadAvailableNewsletters() async {
     setState(() {
       _isLoading = true;
-      _availableDomains = availableDomains;
+      _availableNewsletters = availableNewsletters; // Use the imported list from newsletters.dart
       _isLoading = false;
     });
   }
@@ -55,195 +60,210 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Schedule Weekly Podcast'),
+        title: const Text('Schedule Weekly Podcast'),
         centerTitle: true,
       ),
-      body: Stack(
-        children: [
-          Stepper(
-            type: StepperType.vertical,
-            currentStep: _currentStep,
-            onStepContinue: () async {
-              if (_currentStep == 0 && _selectedDomains.isNotEmpty) {
-                await _fetchEmails();
-              }
-              if (_currentStep < 2 || (_enableLastTwoSteps && _currentStep < 4)) {
-                setState(() {
-                  _currentStep += 1;
-                });
-              }
-            },
-            onStepCancel: () {
-              if (_currentStep > 0) {
-                setState(() {
-                  _currentStep -= 1;
-                });
-              }
-            },
-            steps: [
-              Step(
-                title: Text('Select Newsletters'),
-                content: DomainSelectionWidget(
-                  availableDomains: _availableDomains,
-                  selectedDomains: _selectedDomains,
-                  onChanged: (selectedItems) {
-                    setState(() {
-                      _selectedDomains = selectedItems;
-                    });
-                  },
-                ),
-                isActive: _currentStep >= 0,
-                state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text('Review Emails'),
-                content: EmailReviewWidget(
-                  isLoading: _isLoading,
-                  fetchedEmails: _fetchedEmails,
-                  onFetchEmails: _fetchEmails,
-                ),
-                isActive: _currentStep >= 1,
-                state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text('Generate Sample'),
-                content: GenerateSampleWidget(
-                  isLoading: _isLoading,
-                  generatedPodcast: _generatedPodcast,
-                  onGenerateSample: _generateSamplePodcast,
-                  onShowFeedbackDialog: _showFeedbackDialog,
-                ),
-                isActive: _currentStep >= 2,
-                state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text('Set Air Day'),
-                content: AirDaySelectionWidget(
-                  airDay: _airDay,
-                  onChanged: (newValue) {
-                    setState(() {
-                      _airDay = newValue!;
-                    });
-                  },
-                ),
-                isActive: _currentStep >= 3 && _enableLastTwoSteps,
-                state: _enableLastTwoSteps 
-                    ? (_currentStep > 3 ? StepState.complete : StepState.indexed)
-                    : StepState.disabled,
-              ),
-              Step(
-                title: Text('Schedule Podcast'),
-                content: SchedulePodcastWidget(
-                  airDay: _airDay,
-                  onSchedulePodcast: _schedulePodcast,
-                ),
-                isActive: _currentStep >= 4 && _enableLastTwoSteps,
-                state: _enableLastTwoSteps 
-                    ? (_currentStep == 4 ? StepState.complete : StepState.indexed)
-                    : StepState.disabled,
-              ),
-            ],
+      body: Stepper(
+        type: StepperType.vertical,
+        currentStep: _currentStep,
+        onStepContinue: () async {
+          if (_currentStep == 0 && _selectedNewsletters.isNotEmpty) {
+            await _signInAndFetchEmails();
+          } else if (_currentStep == 1) {
+            setState(() {
+              _currentStep += 1;
+            });
+            await _generateSamplePodcast();
+          } else if (_currentStep == 2) {
+            _showComingSoonMessage();
+          }
+        },
+        onStepCancel: () {
+          if (_currentStep > 0) {
+            setState(() {
+              _currentStep -= 1;
+            });
+          }
+        },
+        steps: [
+          Step(
+            title: const Text('Select Newsletters'),
+            content: _buildNewsletterSelection(),
+            isActive: _currentStep >= 0,
+            state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+          ),
+          Step(
+            title: const Text('Review Emails'),
+            content: _buildEmailReview(),
+            isActive: _currentStep >= 1,
+            state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+          ),
+          Step(
+            title: const Text('Generate Sample'),
+            content: _buildGenerateSample(),
+            isActive: _currentStep >= 2,
+            state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+          ),
+          Step(
+            title: const Text('Set Air Day'),
+            content: _buildComingSoon(),
+            isActive: false,
+            state: StepState.disabled,
+          ),
+          Step(
+            title: const Text('Schedule Podcast'),
+            content: _buildComingSoon(),
+            isActive: false,
+            state: StepState.disabled,
           ),
         ],
       ),
     );
   }
 
-  Future<void> _fetchEmails() async {
-    if (!mounted) return;
+  Widget _buildNewsletterSelection() {
+    return NewsletterSelectionWidget(
+      availableNewsletters: _availableNewsletters,
+      selectedNewsletters: _selectedNewsletters,
+      onChanged: (List<String> selectedItems) {
+        setState(() {
+          _selectedNewsletters = selectedItems;
+        });
+      },
+    );
+  }
 
+  Future<void> _signInAndFetchEmails() async {
+    if (!await _emailService.isSignedIn()) {
+      await _emailService.signIn();
+    }
+
+    if (await _emailService.isSignedIn()) {
+      await _fetchEmails();
+      setState(() {
+        _currentStep += 1;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please sign in to continue.')),
+      );
+    }
+  }
+
+  Future<void> _fetchEmails() async {
     setState(() {
       _isLoading = true;
-      _fetchedEmails = [];
+      _loadingMessage = 'Fetching emails...';
     });
 
     try {
-      final emails = await _emailService.fetchEmails(_selectedDomains);
-      if (!mounted) return;
+      final fetchedEmails = await _emailService.fetchEmails(_selectedNewsletters);
       setState(() {
-        _fetchedEmails = emails ?? [];
+        _fetchedEmails = fetchedEmails ?? [];
         _isLoading = false;
       });
     } catch (e) {
       print('Error fetching emails: $e');
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to fetch emails. Please try again.')),
       );
       setState(() {
+        _fetchedEmails = [];
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _schedulePodcast() async {
-    final newPodcast = {
-      'title': 'Weekly Podcast - ${DateTime.now().toIso8601String()}',
-      'frequency': 'Weekly',
-      'airDay': _airDay,
-      'domains': _selectedDomains,
-      'createdAt': DateTime.now().toIso8601String(),
-      'nextGenerationDate': _calculateNextGenerationDate(),
-      'type': 'upcoming',
-    };
+  Widget _buildEmailReview() {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    } else if (_fetchedEmails.isNotEmpty) {
+      return SizedBox(
+        height: 300, // Adjust this value as needed
+        child: EmailList(emails: _fetchedEmails),
+      );
+    } else {
+      return Text('No emails found.');
+    }
+  }
 
-    widget.onAddPodcast(newPodcast);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Podcast scheduled successfully!')),
+  Widget _buildGenerateSample() {
+    return GenerateSampleWidget(
+      isLoading: _isLoading,
+      loadingMessage: _loadingMessage,
+      generatedPodcast: _generatedPodcast,
+      onStreamAudio: (audioPath) {
+        setState(() {
+          _generatedPodcast!['audioPath'] = audioPath;
+        });
+      },
+      onShowFeedbackDialog: _showFeedbackDialog,
     );
-
-    Navigator.pop(context);
-  }
-
-  DateTime _calculateNextGenerationDate() {
-    final now = DateTime.now();
-    final daysUntilAirDay = _getDayNumber(_airDay) - now.weekday;
-    return DateTime(now.year, now.month, now.day + (daysUntilAirDay <= 0 ? 7 + daysUntilAirDay : daysUntilAirDay));
-  }
-
-  int _getDayNumber(String day) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    return days.indexOf(day) + 1;
   }
 
   Future<void> _generateSamplePodcast() async {
+    if (_generatedPodcast != null) return; // Skip if already generated
+
     setState(() {
       _isLoading = true;
+      _loadingMessage = 'Reading your email...';
     });
 
     try {
+      // Generate podcast title and subtitle
       final now = DateTime.now();
       final sevenDaysAgo = now.subtract(Duration(days: 7));
       final dateFormat = DateFormat('MMM d, yyyy');
       final title = 'Your Personal Podcast: Last Seven Days';
       final subtitle = '${dateFormat.format(sevenDaysAgo)} - ${dateFormat.format(now)}';
 
+      // Prepare email data for the prompt
       final emailData = _fetchedEmails.map((email) => {
         'subject': email['subject'],
         'sender': email['from'],
         'body': email['body'],
       }).toList();
 
+      // Generate podcast content using VertexAI
       final prompt = emailSummaryPrompt.replaceAll('{Placeholder for raw email data}', jsonEncode(emailData));
+      
+      setState(() {
+        _loadingMessage = 'Writing the script...';
+      });
+
       final generatedContent = await _vertexAIService.generateContent(prompt);
 
-      final extractedUrls = await _extractUrls(_fetchedEmails);
-      print('Extracted URLs: $extractedUrls');
+      // Trim the generated content to the first 40 words
+      final List<String> words = generatedContent.split(' ');
+      final String trimmedContent = words.take(200).join(' ');
 
-      final audioPath = podcasts.isNotEmpty ? podcasts[0]['audioPath'] : 'audio/default.mp3';
-
+      // Set loading message for audio generation
       setState(() {
-        _generatedPodcast = {
-          'title': title,
-          'subtitle': subtitle,
-          'content': generatedContent,
-          'audioUrl': audioPath,
-          'createdAt': now.toIso8601String(),
-          'extractedUrls': extractedUrls,
-        };
-        _isLoading = false;
+        _loadingMessage = 'Voicing over...';
       });
+
+      // Generate audio
+      final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app'; // Your TTS API URL
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'text': trimmedContent}),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _generatedPodcast = {
+            'title': title,
+            'subtitle': subtitle,
+            'content': generatedContent,
+            'audioPath': response.bodyBytes,
+            'createdAt': now.toIso8601String(),
+          };
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to generate audio');
+      }
     } catch (e) {
       print('Error generating sample podcast: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,60 +275,88 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     }
   }
 
-  Future<List<Map<String, String>>> _extractUrls(List<Map<String, dynamic>> emails) async {
-    final emailData = emails.map((email) => {
-      'subject': email['subject'],
-      'sender': email['from'],
-      'body': email['body'],
-    }).toList();
-
-    final prompt = emailUrlExtractionPrompt.replaceAll('{Placeholder for raw email data}', jsonEncode(emailData));
-    final generatedContent = await _vertexAIService.generateContent(prompt);
-
-    print('Generated content for URL extraction: $generatedContent');
-
-    final urlRegex = RegExp(r'"url":\s*"(https?://[^"]+)"');
-    final descriptionRegex = RegExp(r'"description":\s*"([^"]+)"');
-
-    final urls = urlRegex.allMatches(generatedContent).map((m) => m.group(1)!).toList();
-    final descriptions = descriptionRegex.allMatches(generatedContent).map((m) => m.group(1)!).toList();
-
-    final extractedUrls = List<Map<String, String>>.generate(
-      urls.length,
-      (index) => {
-        'url': urls[index],
-        'description': index < descriptions.length ? descriptions[index] : 'Link ${index + 1}',
-      },
+  Widget _buildComingSoon() {
+    return Center(
+      child: Text(
+        'Coming Soon!',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
     );
+  }
 
-    print('Extracted URLs: $extractedUrls');
-
-    return extractedUrls;
+  void _showComingSoonMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('This feature is coming soon!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showFeedbackDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return FeedbackDialog(
-          onSubmitFeedback: _submitFeedback,
-          generatedPodcast: _generatedPodcast,
+        return AlertDialog(
+          title: Text('Feedback'),
+          content: RichText(
+            text: TextSpan(
+              text: 'Email ',
+              style: DefaultTextStyle.of(context).style,
+              children: <TextSpan>[
+                TextSpan(
+                  text: 'arnoldas@otron.io',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                ),
+                TextSpan(
+                  text: ' if you want the full access',
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
       },
     );
   }
 
-  void _submitFeedback(String feedback, int satisfaction, bool includePodcast, String email) {
-    print('Feedback: $feedback');
-    print('Satisfaction: $satisfaction');
-    print('Include Podcast: $includePodcast');
-    print('Email: $email');
-    if (includePodcast) {
-      print('Podcast Content: ${_generatedPodcast!['content']}');
-    }
+  Future<void> _schedulePodcast() async {
+    final newPodcast = {
+      'title': 'Weekly Podcast - ${DateTime.now().toIso8601String()}',
+      'frequency': 'Weekly',
+      'airDay': _airDay,
+      'newsletters': _selectedNewsletters,
+      'createdAt': DateTime.now().toIso8601String(),
+      'nextGenerationDate': _calculateNextGenerationDate(),
+      'type': 'upcoming',
+    };
+
+    widget.onAddPodcast(newPodcast);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Thank you for your feedback!')),
+      SnackBar(content: Text('Podcast scheduled successfully!')),
     );
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  DateTime _calculateNextGenerationDate() {
+    final now = DateTime.now();
+    final daysUntilAirDay = _getDayNumber(_airDay) - now.weekday;
+    return DateTime(now.year, now.month, now.day + (daysUntilAirDay <= 0 ? 7 + daysUntilAirDay : daysUntilAirDay));
+  }
+
+  int _getDayNumber(String day) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days.indexOf(day) + 1;
   }
 }
