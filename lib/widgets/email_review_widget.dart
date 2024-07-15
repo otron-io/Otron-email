@@ -16,20 +16,34 @@ class EmailReviewWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FilledButton.icon(
+        ElevatedButton.icon(
           icon: Icon(Icons.refresh),
           label: Text('Fetch Emails'),
           onPressed: onFetchEmails,
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 12),
+          ),
         ),
         SizedBox(height: 16),
         if (isLoading)
-          CircularProgressIndicator()
+          Center(child: CircularProgressIndicator())
         else if (fetchedEmails.isNotEmpty)
-          EmailList(emails: fetchedEmails)
+          Expanded(
+            child: Container(
+              height: 300, // Provide a fixed height or use Expanded
+              child: EmailList(emails: fetchedEmails),
+            ),
+          )
         else
-          Text('No emails fetched yet. Click "Fetch Emails" to load emails.'),
+          Center(
+            child: Text(
+              'No emails fetched yet.\nClick "Fetch Emails" to load emails.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
       ],
     );
   }

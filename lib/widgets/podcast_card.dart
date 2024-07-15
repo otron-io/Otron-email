@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:m3_carousel/m3_carousel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:home/widgets/offline_audio_player.dart';
 import 'package:home/widgets/audio_player_widget.dart';
 import 'package:home/widgets/generated_text_display.dart';
 import 'package:http/http.dart' as http;
@@ -13,16 +14,18 @@ class PodcastCard extends StatefulWidget {
   final Map<String, dynamic> podcast;
   final bool isActive;
   final VoidCallback? onSetup;
+  final VoidCallback? onTap;
   final VoidCallback? onStreamAudio;
-  final bool initiallyExpanded; // Add this line
+  final bool initiallyExpanded;
 
   const PodcastCard({
     Key? key,
     required this.podcast,
     required this.isActive,
     this.onSetup,
+    this.onTap,
     this.onStreamAudio,
-    this.initiallyExpanded = false, // Add this line
+    this.initiallyExpanded = false,
   }) : super(key: key);
 
   @override
@@ -31,43 +34,16 @@ class PodcastCard extends StatefulWidget {
 
 class _PodcastCardState extends State<PodcastCard> {
   late bool _isExpanded;
-  Uint8List? _audioData;
 
   @override
   void initState() {
     super.initState();
-    _isExpanded = widget.initiallyExpanded; // Add this line
-    _loadAudioSource();
-  }
-
-  @override
-  void didUpdateWidget(PodcastCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.podcast['audioPath'] != oldWidget.podcast['audioPath']) {
-      _loadAudioSource();
-    }
-  }
-
-  // Method to load audio source from a given path
-  Future<void> _loadAudioSource() async {
-    if (widget.podcast['audioPath'] is String) {
-      // Load audio from file path
-      final response = await http.get(Uri.parse(widget.podcast['audioPath']));
-      if (response.statusCode == 200) {
-        setState(() {
-          _audioData = response.bodyBytes;
-        });
-      }
-    } else if (widget.podcast['audioPath'] is Uint8List) {
-      setState(() {
-        _audioData = widget.podcast['audioPath'];
-      });
-    }
+    _isExpanded = widget.initiallyExpanded;
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isPersonalNewsletter = widget.podcast['title'] == 'Your personal newsletter';
+    final bool isPersonalNewsletter = widget.podcast['title'] == 'Your personal podcast';
 
     // Widget for inactive podcasts
     if (!widget.isActive) {
@@ -137,39 +113,39 @@ class _PodcastCardState extends State<PodcastCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (widget.podcast['audioPath'] != null)
-                    // Display audio player if audio path is available
-                    AudioPlayerWidget(audioSource: widget.podcast['audioPath'])
-                  else if (widget.onStreamAudio != null)
-                    // Display button to generate audio if no audio path is available
-                    ElevatedButton(
-                      onPressed: widget.onStreamAudio,
-                      child: Text('Generate Audio'),
-                    ),
+                    OfflineAudioPlayer(audioPath: 'assets/${widget.podcast['audioPath']}')
+                  else if (widget.podcast['audioData'] != null)
+                    AudioPlayerWidget(audioData: widget.podcast['audioData'])
+                  else
+                    Text('No audio available', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 16),
-                  // Display podcast content
                   Text(
                     widget.podcast['content'] ?? 'No content available',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  if (widget.podcast['urls'] != null) ...[
-                    // Display related links if available
+                  if (widget.podcast['urls'] != null && widget.podcast['urls'] is String) ...[
                     Text(
                       'Related Links',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
-                    ...widget.podcast['urls'].split(', ').map((url) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4.0),
-                        child: TextButton(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: (widget.podcast['urls'] as String).split(', ').map((url) =>
+                        ElevatedButton(
                           onPressed: () => _launchUrl(url),
                           child: Text(
-                            url,
+                            _truncateUrl(url),
                             overflow: TextOverflow.ellipsis,
                           ),
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            textStyle: TextStyle(fontSize: 12),
+                          ),
                         ),
-                      ),
+                      ).toList(),
                     ),
                   ],
                 ],
@@ -182,7 +158,12 @@ class _PodcastCardState extends State<PodcastCard> {
     );
   }
 
-  // Method to launch URL in the browser
+  String _truncateUrl(String url) {
+    Uri uri = Uri.parse(url);
+    String displayUrl = uri.host + uri.path;
+    return displayUrl.length > 20 ? displayUrl.substring(0, 20) + '...' : displayUrl;
+  }
+
   Future<void> _launchUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (await url_launcher.canLaunchUrl(url)) {

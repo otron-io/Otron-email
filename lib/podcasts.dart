@@ -32,8 +32,8 @@
       'urls': 'https://example1.com, https://example2.com, https://example3.com, https://example4.com',
     },
     {
-      'title': 'Your personal newsletter',
-      'summary': 'Your personalized newsletter',
+      'title': 'Your personal podcast',
+      'summary': 'Your personalized podcast based on your selected newsletters',
       'content': '',
       'audioPath': 'audio/default.mp3',
       'type': 'upcoming',

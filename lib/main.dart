@@ -1,4 +1,3 @@
-
 // --IMPORTS--
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,11 +16,19 @@ import 'package:home/podcasts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  try {
+    await dotenv.load(fileName: "assets/.env");
+    print('Loaded .env file successfully');
+  } catch (e) {
+    print('Error loading .env file: $e');
+    // You might want to handle this error more gracefully,
+    // depending on how critical the .env variables are for your app
+  }
 
   try {
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform, // Ensure correct platform options
+      options: DefaultFirebaseOptions.currentPlatform,
     );
     print('Firebase initialized successfully');
 
@@ -79,7 +86,9 @@ class _MyAppState extends State<MyApp> {
         primaryColor: appTheme.colorScheme.primary,
         brightness: appTheme.brightness,
       ),
-      home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
+      home: CupertinoPageScaffold(
+        child: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
+      ),
     );
   }
 

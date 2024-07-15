@@ -1,13 +1,11 @@
-// --IMPORTS--
-import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
-  final dynamic audioSource;
+  final Uint8List audioData;
 
-  const AudioPlayerWidget({Key? key, required this.audioSource}) : super(key: key);
+  const AudioPlayerWidget({Key? key, required this.audioData}) : super(key: key);
 
   @override
   _AudioPlayerWidgetState createState() => _AudioPlayerWidgetState();
@@ -18,7 +16,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  double _playbackRate = 1.25; // Changed default to 1.25x
+  double _playbackRate = 1.25;
   double _progress = 0.0;
 
   @override
@@ -26,53 +24,35 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     super.initState();
     _audioPlayer = AudioPlayer();
     _setupAudioPlayer();
-    _loadAudio();
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.playerStateStream.listen((state) {
-      setState(() {
-        _isPlaying = state.playing;
-      });
-    });
-
-    _audioPlayer.durationStream.listen((newDuration) {
-      setState(() {
-        _duration = newDuration ?? Duration.zero;
-      });
-    });
-
-    _audioPlayer.positionStream.listen((newPosition) {
-      setState(() {
-        _position = newPosition;
-        _progress = _duration.inMilliseconds > 0
-            ? _position.inMilliseconds / _duration.inMilliseconds
-            : 0;
-      });
-    });
-  }
-
-  Future<void> _loadAudio() async {
+  void _setupAudioPlayer() async {
     try {
-      if (widget.audioSource is String) {
-        // For asset paths
-        await _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(widget.audioSource)));
-      } else if (widget.audioSource is Uint8List) {
-        // For streamed audio data
-        await _audioPlayer.setAudioSource(
-          ProgressiveAudioSource(
-            Uri.dataFromBytes(widget.audioSource, mimeType: 'audio/mpeg'),
-          ),
-        );
-      } else {
-        throw Exception('Invalid audio source type');
-      }
-      await _audioPlayer.setSpeed(_playbackRate);
-    } catch (e) {
-      print('Error loading audio: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load audio: ${e.toString()}')),
+      await _audioPlayer.setAudioSource(
+        AudioSource.uri(Uri.dataFromBytes(widget.audioData, mimeType: 'audio/mpeg')),
       );
+      await _audioPlayer.setSpeed(_playbackRate);
+      _audioPlayer.playerStateStream.listen((state) {
+        setState(() {
+          _isPlaying = state.playing;
+          if (state.processingState == ProcessingState.completed) {
+            _progress = 1.0;
+          }
+        });
+      });
+      _audioPlayer.durationStream.listen((newDuration) {
+        setState(() {
+          _duration = newDuration ?? Duration.zero;
+        });
+      });
+      _audioPlayer.positionStream.listen((newPosition) {
+        setState(() {
+          _position = newPosition;
+          _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
+        });
+      });
+    } catch (e) {
+      print("Error loading audio source: $e");
     }
   }
 
@@ -134,7 +114,13 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
               Text(_formatDuration(_duration), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface)),
             ],
           ),
-          LinearProgressIndicator(value: _progress),
+          Slider(
+            value: _progress,
+            onChanged: (value) {
+              final newPosition = Duration(seconds: (value * _duration.inSeconds).round());
+              _audioPlayer.seek(newPosition);
+            },
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

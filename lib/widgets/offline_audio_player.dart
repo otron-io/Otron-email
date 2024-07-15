@@ -1,5 +1,6 @@
 // --IMPORTS--
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -19,7 +20,8 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
   Duration _position = Duration.zero;
   double _playbackRate = 1.25;
   double _progress = 0.0;
-  Timer? _timer;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -35,7 +37,6 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
         _isPlaying = state.playing;
         if (state.processingState == ProcessingState.completed) {
           _progress = 1.0;
-          _timer?.cancel();
         }
       });
     });
@@ -56,11 +57,15 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
     try {
       await _audioPlayer.setAsset(widget.audioPath);
       await _audioPlayer.setSpeed(_playbackRate);
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
       print('Error loading audio: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load audio: ${e.toString()}')),
-      );
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to load audio: ${e.toString()}';
+      });
     }
   }
 
@@ -68,17 +73,11 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
     try {
       if (_isPlaying) {
         await _audioPlayer.pause();
-        _timer?.cancel();
       } else {
         if (_position >= _duration) {
           await _audioPlayer.seek(Duration.zero);
         }
         await _audioPlayer.play();
-        _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-          setState(() {
-            _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
-          });
-        });
       }
     } catch (e) {
       print('Error toggling play/pause: $e');
@@ -91,7 +90,6 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
   @override
   void dispose() {
     _audioPlayer.dispose();
-    _timer?.cancel();
     super.dispose();
   }
 
@@ -105,6 +103,15 @@ class _OfflineAudioPlayerState extends State<OfflineAudioPlayer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!, style: theme.textTheme.bodyMedium));
+    }
+    if (widget.audioPath == null) {
+      return Center(child: Text('No audio available'));
+    }
     return Container(
       constraints: BoxConstraints(maxWidth: 600),
       padding: EdgeInsets.all(16),

@@ -1,15 +1,12 @@
-
-// --IMPORTS--
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:home/widgets/podcast_card.dart';
+import 'package:home/widgets/audio_player_widget.dart';
+import 'package:home/widgets/access_request_dialog.dart'; // Add this import
 
 class GenerateSampleWidget extends StatelessWidget {
   final bool isLoading;
   final String loadingMessage;
   final Map<String, dynamic>? generatedPodcast;
-  final Function(String) onStreamAudio;
-  final VoidCallback onShowFeedbackDialog;
+  final Function(dynamic) onStreamAudio;
 
   const GenerateSampleWidget({
     Key? key,
@@ -17,78 +14,61 @@ class GenerateSampleWidget extends StatelessWidget {
     required this.loadingMessage,
     required this.generatedPodcast,
     required this.onStreamAudio,
-    required this.onShowFeedbackDialog,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return _buildLoadingIndicator(context);
+      return Column(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(loadingMessage),
+        ],
+      );
     } else if (generatedPodcast != null) {
-      return _buildPodcastCard(context);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            generatedPodcast!['title'],
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          SizedBox(height: 8),
+          Text(
+            generatedPodcast!['subtitle'],
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          SizedBox(height: 16),
+          if (generatedPodcast!['audioData'] != null)
+            AudioPlayerWidget(audioData: generatedPodcast!['audioData']),
+          SizedBox(height: 16),
+          Text(
+            generatedPodcast!['content'],
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => _showAccessRequestDialog(context),
+            child: Text('Request Access'),
+          ),
+        ],
+      );
+    } else {
+      return Text('No sample generated yet.');
     }
-    return SizedBox.shrink();
   }
 
-  Widget _buildLoadingIndicator(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 16),
-        Text(
-          loadingMessage,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPodcastCard(BuildContext context) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PodcastCard(
-              podcast: generatedPodcast!,
-              isActive: true,
-              onStreamAudio: () => onStreamAudio(generatedPodcast!['content']),
-              initiallyExpanded: true,
-            ),
-            SizedBox(height: 16),
-            _buildCopyContentButton(context),
-            SizedBox(height: 16),
-            _buildFeedbackButton(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCopyContentButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () => _copyContentToClipboard(context),
-      icon: Icon(Icons.copy),
-      label: Text('Copy Content'),
-    );
-  }
-
-  void _copyContentToClipboard(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: generatedPodcast!['content']));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Content copied to clipboard')),
-    );
-  }
-
-  Widget _buildFeedbackButton(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onShowFeedbackDialog,
-      icon: Icon(Icons.feedback),
-      label: Text('Submit Feedback'),
+  void _showAccessRequestDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow dismissing by tapping outside
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Prevent closing with back button
+          child: AccessRequestDialog(),
+        );
+      },
     );
   }
 }

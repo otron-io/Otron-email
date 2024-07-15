@@ -22,23 +22,32 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Feedback'),
-      content: SingleChildScrollView(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Feedback',
+              style: Theme.of(context).textTheme.headline6,
+            ),
+            SizedBox(height: 16),
             TextField(
               decoration: InputDecoration(
                 labelText: 'Your Feedback (Required)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               maxLines: 3,
               onChanged: (value) => feedback = value,
             ),
             SizedBox(height: 16),
-            Text('How satisfied are you? (Required)'),
+            Text('How satisfied are you?', style: Theme.of(context).textTheme.subtitle1),
             Slider(
               value: satisfaction.toDouble(),
               min: 0,
@@ -51,7 +60,6 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                 });
               },
             ),
-            SizedBox(height: 16),
             CheckboxListTile(
               title: Text('Include Podcast Content'),
               value: includePodcast,
@@ -60,32 +68,44 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                   includePodcast = value ?? false;
                 });
               },
+              contentPadding: EdgeInsets.zero,
             ),
+            SizedBox(height: 8),
             TextField(
               decoration: InputDecoration(
                 labelText: 'Your Email (Optional)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onChanged: (value) => email = value,
+            ),
+            SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancel'),
+                ),
+                SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    widget.onSubmitFeedback(feedback, satisfaction, includePodcast, email);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Submit'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            widget.onSubmitFeedback(feedback, satisfaction, includePodcast, email);
-            Navigator.of(context).pop();
-          },
-          child: Text('Submit'),
-        ),
-      ],
     );
   }
 }

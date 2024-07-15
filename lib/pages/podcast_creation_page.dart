@@ -13,8 +13,9 @@ import 'package:http/http.dart' as http;
 import 'package:home/widgets/generate_sample_widget.dart';
 import 'package:home/widgets/audio_player_widget.dart';
 import 'package:home/widgets/newsletter_selection_widget.dart';
-import 'package:home/newsletters.dart'; // Add this import
+import 'package:home/newsletters.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:home/widgets/email_review_widget.dart';
 
 // --PODCAST CREATION PAGE CLASS--
 class PodcastCreationPage extends StatefulWidget {
@@ -63,61 +64,81 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
         title: const Text('Schedule Weekly Podcast'),
         centerTitle: true,
       ),
-      body: Stepper(
-        type: StepperType.vertical,
-        currentStep: _currentStep,
-        onStepContinue: () async {
-          if (_currentStep == 0 && _selectedNewsletters.isNotEmpty) {
-            await _signInAndFetchEmails();
-          } else if (_currentStep == 1) {
-            setState(() {
-              _currentStep += 1;
-            });
-            await _generateSamplePodcast();
-          } else if (_currentStep == 2) {
-            _showComingSoonMessage();
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep > 0) {
-            setState(() {
-              _currentStep -= 1;
-            });
-          }
-        },
-        steps: [
-          Step(
-            title: const Text('Select Newsletters'),
-            content: _buildNewsletterSelection(),
-            isActive: _currentStep >= 0,
-            state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+      body: _isLoading
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text(_loadingMessage),
+              ],
+            ),
+          )
+        : Column(
+            children: [
+              Expanded(
+                child: Stepper(
+                  type: StepperType.vertical,
+                  currentStep: _currentStep,
+                  onStepContinue: () async {
+                    if (_currentStep == 0 && _selectedNewsletters.isNotEmpty) {
+                      await _signInAndFetchEmails();
+                    } else if (_currentStep == 1) {
+                      setState(() {
+                        _currentStep += 1;
+                      });
+                      await _generateSamplePodcast();
+                    } else if (_currentStep == 2) {
+                      _showComingSoonMessage();
+                    }
+                  },
+                  onStepCancel: () {
+                    if (_currentStep > 0) {
+                      setState(() {
+                        _currentStep -= 1;
+                      });
+                    }
+                  },
+                  steps: [
+                    Step(
+                      title: const Text('Select Newsletters'),
+                      content: _buildNewsletterSelection(),
+                      isActive: _currentStep >= 0,
+                      state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+                    ),
+                    Step(
+                      title: const Text('Review Emails'),
+                      content: Container(
+                        height: 400, // Adjust this value as needed
+                        child: _buildEmailReview(),
+                      ),
+                      isActive: _currentStep >= 1,
+                      state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+                    ),
+                    Step(
+                      title: const Text('Generate Sample'),
+                      content: _buildGenerateSample(),
+                      isActive: _currentStep >= 2,
+                      state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+                    ),
+                    Step(
+                      title: const Text('Set Air Day'),
+                      content: _buildComingSoon(),
+                      isActive: false,
+                      state: StepState.disabled,
+                    ),
+                    Step(
+                      title: const Text('Schedule Podcast'),
+                      content: _buildComingSoon(),
+                      isActive: false,
+                      state: StepState.disabled,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Step(
-            title: const Text('Review Emails'),
-            content: _buildEmailReview(),
-            isActive: _currentStep >= 1,
-            state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-          ),
-          Step(
-            title: const Text('Generate Sample'),
-            content: _buildGenerateSample(),
-            isActive: _currentStep >= 2,
-            state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-          ),
-          Step(
-            title: const Text('Set Air Day'),
-            content: _buildComingSoon(),
-            isActive: false,
-            state: StepState.disabled,
-          ),
-          Step(
-            title: const Text('Schedule Podcast'),
-            content: _buildComingSoon(),
-            isActive: false,
-            state: StepState.disabled,
-          ),
-        ],
-      ),
     );
   }
 
@@ -134,20 +155,144 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   }
 
   Future<void> _signInAndFetchEmails() async {
-    if (!await _emailService.isSignedIn()) {
-      await _emailService.signIn();
-    }
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = 'Signing in...';
+    });
 
-    if (await _emailService.isSignedIn()) {
-      await _fetchEmails();
-      setState(() {
-        _currentStep += 1;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please sign in to continue.')),
-      );
+    try {
+      bool isSignedIn = await _emailService.isSignedIn();
+      if (!isSignedIn) {
+        await _emailService.signIn();
+        isSignedIn = await _emailService.isSignedIn();
+      }
+
+      if (isSignedIn) {
+        setState(() {
+          _loadingMessage = 'Fetching emails...';
+        });
+        await _fetchEmails();
+        if (_fetchedEmails.isNotEmpty) {
+          setState(() {
+            _currentStep += 1;
+            _isLoading = false;
+          });
+        } else {
+          // Show a message if no emails were fetched
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No emails found. Please try again.')),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else {
+        // Show Airtable signup form if Google sign-in fails
+        _showSignupDialog();
+      }
+    } catch (e) {
+      print('Error signing in or fetching emails: $e');
+      // Show Airtable signup form if there's an error
+      _showSignupDialog();
     }
+  }
+
+  void _showSignupDialog() {
+    setState(() {
+      _isLoading = false;
+    });
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Proceed with Sample Newsletters'),
+          content: Text('Since you\'re not signed in with Google, we\'ll use sample newsletters for demonstration purposes.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Proceed'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _proceedWithoutGoogleSignIn();
+              },
+            ),
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _proceedWithoutGoogleSignIn() {
+    // Proceed to the next step with sample emails
+    setState(() {
+      _currentStep += 1;
+      _fetchedEmails = [
+        {
+          'subject': 'This Week in Tech: AI Breakthroughs and Privacy Concerns',
+          'from': 'techdigest@example.com',
+          'body': '''
+Dear Tech Enthusiasts,
+
+This week has been a whirlwind in the tech world. Here are the highlights:
+
+1. OpenAI's GPT-5 Announcement: The next generation of language models is here, promising even more human-like interactions. But what are the ethical implications?
+
+2. Apple's New Privacy Features: iOS 18 will introduce groundbreaking privacy controls. We break down what this means for users and advertisers.
+
+3. The Chip Shortage: Finally Easing? We analyze the latest industry reports and what they mean for consumer electronics prices.
+
+Stay curious and keep innovating!
+
+The TechDigest Team
+''',
+        },
+        {
+          'subject': 'Mindful Monday: Embracing Change and Growth',
+          'from': 'dailyzen@example.com',
+          'body': '''
+Hello Mindful Ones,
+
+As we start a new week, let's focus on embracing change and fostering personal growth:
+
+1. Meditation of the Week: "Flowing with Change" - A 10-minute guided meditation to help you adapt to life's constant shifts.
+
+2. Wisdom Quote: "The only way to make sense out of change is to plunge into it, move with it, and join the dance." - Alan Watts
+
+3. Weekly Challenge: Try one new thing each day, no matter how small. Share your experiences in our community forum!
+
+Remember, every moment is an opportunity for growth.
+
+Breathe deeply and live fully,
+Your DailyZen Team
+''',
+        },
+        {
+          'subject': 'Gourmet Gazette: Seasonal Delights and Culinary Trends',
+          'from': 'tastebud@example.com',
+          'body': '''
+Greetings, Food Lovers!
+
+Spring is in full swing, and so are our taste buds! Here's what's cooking:
+
+1. Ingredient Spotlight: Fiddlehead Ferns - These curly greens are the talk of farmers' markets. We share three delicious recipes to try.
+
+2. Restaurant Review: "The Humble Radish" in Portland is redefining farm-to-table dining. Our critic gives it 4.5/5 stars!
+
+3. Trend Alert: Fermentation Station - From kombucha to kimchi, fermented foods are having a moment. We explore the health benefits and how to start fermenting at home.
+
+Happy cooking and bon appétit!
+
+The Gourmet Gazette Team
+''',
+        },
+      ];
+    });
   }
 
   Future<void> _fetchEmails() async {
@@ -175,16 +320,11 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   }
 
   Widget _buildEmailReview() {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    } else if (_fetchedEmails.isNotEmpty) {
-      return SizedBox(
-        height: 300, // Adjust this value as needed
-        child: EmailList(emails: _fetchedEmails),
-      );
-    } else {
-      return Text('No emails found.');
-    }
+    return EmailReviewWidget(
+      isLoading: _isLoading,
+      fetchedEmails: _fetchedEmails,
+      onFetchEmails: _fetchEmails,
+    );
   }
 
   Widget _buildGenerateSample() {
@@ -197,7 +337,6 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
           _generatedPodcast!['audioPath'] = audioPath;
         });
       },
-      onShowFeedbackDialog: _showFeedbackDialog,
     );
   }
 
@@ -235,7 +374,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
 
       // Trim the generated content to the first 40 words
       final List<String> words = generatedContent.split(' ');
-      final String trimmedContent = words.take(200).join(' ');
+      final String trimmedContent = words.take(40).join(' ');
 
       // Set loading message for audio generation
       setState(() {
@@ -256,7 +395,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
             'title': title,
             'subtitle': subtitle,
             'content': generatedContent,
-            'audioPath': response.bodyBytes,
+            'audioData': response.bodyBytes, // Store as 'audioData' instead of 'audioPath'
             'createdAt': now.toIso8601String(),
           };
           _isLoading = false;
@@ -290,40 +429,6 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
         content: Text('This feature is coming soon!'),
         duration: Duration(seconds: 2),
       ),
-    );
-  }
-
-  void _showFeedbackDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Feedback'),
-          content: RichText(
-            text: TextSpan(
-              text: 'Email ',
-              style: DefaultTextStyle.of(context).style,
-              children: <TextSpan>[
-                TextSpan(
-                  text: 'arnoldas@otron.io',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-                ),
-                TextSpan(
-                  text: ' if you want the full access',
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Close'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 
