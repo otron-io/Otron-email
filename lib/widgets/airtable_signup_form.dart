@@ -57,6 +57,8 @@ class _AirtableSignupFormState extends State<AirtableSignupForm> {
           final iframe = html.IFrameElement()
             ..src = _airtableFormUrl
             ..style.border = 'none'
+            ..style.width = '100%'
+            ..style.height = '100%'
             ..allowFullscreen = false;
 
           // Listen for messages from the iframe
@@ -71,7 +73,11 @@ class _AirtableSignupFormState extends State<AirtableSignupForm> {
         },
       );
 
-      return HtmlElementView(viewType: viewType);
+      return SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: HtmlElementView(viewType: viewType),
+      );
     } else {
       // Use WebView for mobile
       return _isWebViewReady

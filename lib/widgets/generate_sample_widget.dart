@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:home/widgets/audio_player_widget.dart';
-import 'package:home/widgets/access_request_dialog.dart'; // Add this import
+import 'package:home/widgets/access_request_dialog.dart';
 
 class GenerateSampleWidget extends StatelessWidget {
   final bool isLoading;
@@ -62,12 +62,9 @@ class GenerateSampleWidget extends StatelessWidget {
   void _showAccessRequestDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: true, // Allow dismissing by tapping outside
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => false, // Prevent closing with back button
-          child: AccessRequestDialog(),
-        );
+        return AccessRequestDialog();
       },
     );
   }

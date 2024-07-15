@@ -42,6 +42,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   List<String> _selectedNewsletters = [];
   List<String> _customFilters = [];
   bool _isSignedIn = false;
+  bool _useSampleData = false;
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                   currentStep: _currentStep,
                   onStepContinue: () async {
                     if (_currentStep == 0 && _selectedNewsletters.isNotEmpty) {
-                      await _signInAndFetchEmails();
+                      await _showDataSourceDialog();
                     } else if (_currentStep == 1) {
                       setState(() {
                         _currentStep += 1;
@@ -154,6 +155,60 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     );
   }
 
+  Future<void> _showDataSourceDialog() async {
+    bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Choose Data Source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Do you want to use sample data or your Gmail account?'),
+              SizedBox(height: 16),
+              Text(
+                'To connect your Google account, you need to be added as a test user. Email arnoldas@otron.io to gain access.',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Use Sample Data'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+            TextButton(
+              child: Text('Use Gmail Account'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(null),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _useSampleData = result;
+        if (result) {
+          _proceedWithoutGoogleSignIn();
+        } else {
+          _signInAndFetchEmails();
+        }
+      });
+    } else {
+      // User cancelled, reset to step 0
+      setState(() {
+        _currentStep = 0;
+      });
+    }
+  }
+
   Future<void> _signInAndFetchEmails() async {
     setState(() {
       _isLoading = true;
@@ -178,7 +233,6 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
             _isLoading = false;
           });
         } else {
-          // Show a message if no emails were fetched
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('No emails found. Please try again.')),
           );
@@ -187,12 +241,10 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
           });
         }
       } else {
-        // Show Airtable signup form if Google sign-in fails
         _showSignupDialog();
       }
     } catch (e) {
       print('Error signing in or fetching emails: $e');
-      // Show Airtable signup form if there's an error
       _showSignupDialog();
     }
   }
