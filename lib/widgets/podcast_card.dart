@@ -9,6 +9,7 @@ import 'package:home/widgets/generated_text_display.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class PodcastCard extends StatefulWidget {
   final Map<String, dynamic> podcast;
@@ -39,6 +40,16 @@ class _PodcastCardState extends State<PodcastCard> {
   void initState() {
     super.initState();
     _isExpanded = widget.initiallyExpanded;
+  }
+
+  void _logPlayedPodcastEvent() async {
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'played_podcast',
+      parameters: {
+        'podcast_title': widget.podcast['title'] ?? 'Unknown',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
   }
 
   @override
@@ -115,7 +126,10 @@ class _PodcastCardState extends State<PodcastCard> {
                   if (widget.podcast['audioPath'] != null)
                     OfflineAudioPlayer(audioPath: 'assets/${widget.podcast['audioPath']}')
                   else if (widget.podcast['audioData'] != null)
-                    AudioPlayerWidget(audioData: widget.podcast['audioData'])
+                    AudioPlayerWidget(
+                      audioData: widget.podcast['audioData'],
+                      onPlayPressed: _logPlayedPodcastEvent,
+                    )
                   else
                     Text('No audio available', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 16),

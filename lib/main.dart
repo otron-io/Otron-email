@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'firebase_options.dart';
 import 'package:home/services/email_service.dart';
 import 'package:home/services/vertex_ai_service.dart';
@@ -31,6 +32,9 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('Firebase initialized successfully');
+
+    // Initialize Firebase Analytics
+    FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
     // Rest of your initialization code...
   } catch (e) {

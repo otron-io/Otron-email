@@ -4,8 +4,13 @@ import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final Uint8List audioData;
+  final VoidCallback onPlayPressed;
 
-  const AudioPlayerWidget({Key? key, required this.audioData}) : super(key: key);
+  const AudioPlayerWidget({
+    Key? key,
+    required this.audioData,
+    required this.onPlayPressed,
+  }) : super(key: key);
 
   @override
   _AudioPlayerWidgetState createState() => _AudioPlayerWidgetState();
@@ -18,66 +23,65 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   Duration _position = Duration.zero;
   double _playbackRate = 1.25;
   double _progress = 0.0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
     _setupAudioPlayer();
+    _initAudioPlayer();
   }
 
-  void _setupAudioPlayer() async {
+  void _setupAudioPlayer() {
+    _audioPlayer.playerStateStream.listen((state) {
+      setState(() {
+        _isPlaying = state.playing;
+        if (state.processingState == ProcessingState.completed) {
+          _progress = 1.0;
+        }
+      });
+    });
+    _audioPlayer.durationStream.listen((newDuration) {
+      setState(() {
+        _duration = newDuration ?? Duration.zero;
+      });
+    });
+    _audioPlayer.positionStream.listen((newPosition) {
+      setState(() {
+        _position = newPosition;
+        _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
+      });
+    });
+  }
+
+  void _initAudioPlayer() async {
     try {
       await _audioPlayer.setAudioSource(
-        AudioSource.uri(Uri.dataFromBytes(widget.audioData, mimeType: 'audio/mpeg')),
+        MyCustomSource(widget.audioData),
       );
       await _audioPlayer.setSpeed(_playbackRate);
-      _audioPlayer.playerStateStream.listen((state) {
-        setState(() {
-          _isPlaying = state.playing;
-          if (state.processingState == ProcessingState.completed) {
-            _progress = 1.0;
-          }
-        });
-      });
-      _audioPlayer.durationStream.listen((newDuration) {
-        setState(() {
-          _duration = newDuration ?? Duration.zero;
-        });
-      });
-      _audioPlayer.positionStream.listen((newPosition) {
-        setState(() {
-          _position = newPosition;
-          _progress = _position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds);
-        });
+      setState(() {
+        _isLoading = false;
       });
     } catch (e) {
-      print("Error loading audio source: $e");
+      print('Error initializing audio player: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _togglePlayPause() async {
-    try {
-      if (_isPlaying) {
-        await _audioPlayer.pause();
-      } else {
-        if (_position >= _duration) {
-          await _audioPlayer.seek(Duration.zero);
-        }
-        await _audioPlayer.play();
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+    } else {
+      if (_position >= _duration) {
+        await _audioPlayer.seek(Duration.zero);
       }
-    } catch (e) {
-      print('Error toggling play/pause: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to toggle play/pause: $e')),
-      );
+      await _audioPlayer.play();
+      widget.onPlayPressed();
     }
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
   }
 
   String _formatDuration(Duration duration) {
@@ -90,6 +94,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
     return Container(
       constraints: BoxConstraints(maxWidth: 600),
       padding: EdgeInsets.all(16),
@@ -114,13 +121,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
               Text(_formatDuration(_duration), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface)),
             ],
           ),
-          Slider(
-            value: _progress,
-            onChanged: (value) {
-              final newPosition = Duration(seconds: (value * _duration.inSeconds).round());
-              _audioPlayer.seek(newPosition);
-            },
-          ),
+          LinearProgressIndicator(value: _progress),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -165,6 +166,31 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+}
+
+class MyCustomSource extends StreamAudioSource {
+  final Uint8List _audioData;
+
+  MyCustomSource(this._audioData);
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    start ??= 0;
+    end ??= _audioData.length;
+    return StreamAudioResponse(
+      sourceLength: _audioData.length,
+      contentLength: end - start,
+      offset: start,
+      stream: Stream.value(_audioData.sublist(start, end)),
+      contentType: 'audio/mpeg',
     );
   }
 }

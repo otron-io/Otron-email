@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:home/widgets/audio_player_widget.dart';
 import 'package:home/widgets/access_request_dialog.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class GenerateSampleWidget extends StatelessWidget {
   final bool isLoading;
@@ -15,6 +16,16 @@ class GenerateSampleWidget extends StatelessWidget {
     required this.generatedPodcast,
     required this.onStreamAudio,
   }) : super(key: key);
+
+  void _logPlayedSampleEvent() async {
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'played_sample',
+      parameters: {
+        'podcast_title': generatedPodcast?['title'] ?? 'Unknown',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +52,10 @@ class GenerateSampleWidget extends StatelessWidget {
           ),
           SizedBox(height: 16),
           if (generatedPodcast!['audioData'] != null)
-            AudioPlayerWidget(audioData: generatedPodcast!['audioData']),
+            AudioPlayerWidget(
+              audioData: generatedPodcast!['audioData'],
+              onPlayPressed: _logPlayedSampleEvent,
+            ),
           SizedBox(height: 16),
           Text(
             generatedPodcast!['content'],

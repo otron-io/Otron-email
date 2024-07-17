@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.18.0
   webview_flutter: ^4.4.2  # Use the latest version available
   js: ^0.6.3  # Add this line if it's not already present
+  firebase_analytics: ^10.8.5
 
 dev_dependencies:
   flutter_test:
