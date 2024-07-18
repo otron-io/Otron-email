@@ -76,9 +76,11 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
               ],
             ),
           )
-        : Column(
-            children: [
-              Expanded(
+        : SingleChildScrollView( // Add this to make the content scrollable
+            child: Padding( // Add padding to prevent content from touching the edges
+              padding: EdgeInsets.all(16),
+              child: ConstrainedBox( // Constrain the Stepper's width
+                constraints: BoxConstraints(maxWidth: 600), // Adjust this value as needed
                 child: Stepper(
                   type: StepperType.vertical,
                   currentStep: _currentStep,
@@ -110,7 +112,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                     ),
                     Step(
                       title: const Text('Review Emails'),
-                      content: Container(
+                      content: SizedBox(
                         height: 400, // Adjust this value as needed
                         child: _buildEmailReview(),
                       ),
@@ -138,20 +140,23 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
     );
   }
 
   Widget _buildNewsletterSelection() {
-    return NewsletterSelectionWidget(
-      availableNewsletters: _availableNewsletters,
-      selectedNewsletters: _selectedNewsletters,
-      onChanged: (List<String> selectedItems) {
-        setState(() {
-          _selectedNewsletters = selectedItems;
-        });
-      },
+    return SizedBox(
+      width: double.infinity,
+      child: NewsletterSelectionWidget(
+        availableNewsletters: _availableNewsletters,
+        selectedNewsletters: _selectedNewsletters,
+        onChanged: (List<String> selectedItems) {
+          setState(() {
+            _selectedNewsletters = selectedItems;
+          });
+        },
+      ),
     );
   }
 
@@ -376,6 +381,7 @@ The Gourmet Gazette Team
       isLoading: _isLoading,
       fetchedEmails: _fetchedEmails,
       onFetchEmails: _fetchEmails,
+      emailService: _emailService,
     );
   }
 

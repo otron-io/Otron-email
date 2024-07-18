@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:home/pages/podcast_creation_page.dart';
 import 'package:home/widgets/podcast_card.dart';
 import 'package:home/podcasts.dart';
-import 'package:home/widgets/active_podcast_player.dart';
 
 class PodcastListPage extends StatelessWidget {
   final Function(Map<String, dynamic>) onAddPodcast;
@@ -18,7 +17,7 @@ class PodcastListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final activePodcasts = podcasts.where((podcast) => 
       podcast['type'] == 'active' && podcast['audioPath'] != null).toList();
-    final upcomingPodcasts = podcasts.where((podcast) => 
+    final scheduledPodcasts = podcasts.where((podcast) => 
       podcast['type'] == 'upcoming').toList();
 
     return Scaffold(
@@ -27,47 +26,118 @@ class PodcastListPage extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          if (activePodcasts.isNotEmpty) ...[
-            Text(
-              'Now Playing',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            ActivePodcastPlayer(podcast: activePodcasts[0]),
-            if (activePodcasts.length > 1) ...[
-              const SizedBox(height: 24),
-              Text(
-                'More Active Podcasts',
-                style: Theme.of(context).textTheme.titleMedium,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Create Your Own Podcast',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Turn your favorite newsletters into personalized audio content',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Center(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => PodcastCreationPage(onAddPodcast: onAddPodcast)),
+                            );
+                          },
+                          icon: Icon(Icons.add),
+                          label: Text('Start Creating'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
-              ...activePodcasts.skip(1).map((podcast) => PodcastCard(
-                podcast: podcast,
-                isActive: true,
-                onTap: () {
-                  // Logic to switch to this podcast
-                },
-                onStreamAudio: () {
-                  // Logic to stream audio
-                },
-              )),
-            ],
-          ],
-          if (upcomingPodcasts.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Text(
-              'Upcoming Podcasts',
-              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
-            ...upcomingPodcasts.map((podcast) => PodcastCard(
-              podcast: podcast,
-              isActive: false,
-              onSetup: () => _navigateToSetupPage(context),
-            )),
+          ),
+          if (activePodcasts.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Your Created Podcasts',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(16.0),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => PodcastCard(
+                    podcast: activePodcasts[index],
+                    isActive: true,
+                    onTap: () {
+                      // Logic to switch to this podcast
+                    },
+                    onStreamAudio: () {
+                      // Logic to stream audio
+                    },
+                  ),
+                  childCount: activePodcasts.length,
+                ),
+              ),
+            ),
+          ],
+          if (scheduledPodcasts.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Scheduled Podcasts',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(16.0),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => PodcastCard(
+                    podcast: scheduledPodcasts[index],
+                    isActive: false,
+                    onSetup: () => _navigateToSetupPage(context),
+                  ),
+                  childCount: scheduledPodcasts.length,
+                ),
+              ),
+            ),
           ],
         ],
       ),

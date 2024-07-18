@@ -22,4 +22,9 @@ final List<String> availableNewsletters = [
   'zerotomastery.io',
   'tldr.tech',
   'mail.beehiiv.com',
+  'nytimes.com',
+  'washingtonpost.com',
+  'latimes.com',
+  'wsj.com',
+  'usatoday.com',
 ];

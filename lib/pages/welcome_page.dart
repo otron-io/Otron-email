@@ -22,23 +22,14 @@ class WelcomePage extends StatelessWidget {
                   Icon(Icons.podcasts, size: 80, color: Theme.of(context).colorScheme.primary),
                   SizedBox(height: 32),
                   Text(
-                    'Welcome to your Personal Podcast',
+                    'Welcome to Your Personal Podcast Creator',
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 16),
-                  Text.rich(
-                    TextSpan(
-                      text: 'Turn your weekly ',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: 'buildspace',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(text: ' newsletters into personalized podcasts'),
-                      ],
-                    ),
+                  Text(
+                    'Transform your favorite newsletters into personalized audio content',
+                    style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 32),

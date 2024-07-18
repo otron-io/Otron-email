@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:home/widgets/email_list.dart';
+import 'package:home/services/email_service.dart';
 
 class EmailReviewWidget extends StatelessWidget {
   final bool isLoading;
   final List<Map<String, dynamic>> fetchedEmails;
   final VoidCallback onFetchEmails;
+  final EmailService emailService;
 
   const EmailReviewWidget({
     Key? key,
     required this.isLoading,
     required this.fetchedEmails,
     required this.onFetchEmails,
+    required this.emailService,
   }) : super(key: key);
 
   @override
@@ -32,8 +35,11 @@ class EmailReviewWidget extends StatelessWidget {
         else if (fetchedEmails.isNotEmpty)
           Expanded(
             child: Container(
-              height: 300, // Provide a fixed height or use Expanded
-              child: EmailList(emails: fetchedEmails),
+              height: 300,
+              child: EmailList(
+                emails: fetchedEmails,
+                emailService: emailService,
+              ),
             ),
           )
         else

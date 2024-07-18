@@ -55,6 +55,7 @@ class _PodcastCardState extends State<PodcastCard> {
   @override
   Widget build(BuildContext context) {
     final bool isPersonalNewsletter = widget.podcast['title'] == 'Your personal podcast';
+    final String heroTag = 'podcast-${widget.podcast['title']}';
 
     // Widget for inactive podcasts
     if (!widget.isActive) {
@@ -63,10 +64,13 @@ class _PodcastCardState extends State<PodcastCard> {
         elevation: 0,
         color: Theme.of(context).colorScheme.surfaceVariant,
         child: ListTile(
-          leading: CircleAvatar(
-            backgroundImage: NetworkImage('https://i.ibb.co/xHhxjms/podcast-icon.png'),
-            radius: 25,
-            backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+          leading: Hero(
+            tag: heroTag,
+            child: CircleAvatar(
+              backgroundImage: NetworkImage('https://i.ibb.co/xHhxjms/podcast-icon.png'),
+              radius: 25,
+              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+            ),
           ),
           title: Text(
             widget.podcast['title'] ?? 'No Title',
@@ -102,9 +106,12 @@ class _PodcastCardState extends State<PodcastCard> {
           ExpansionPanel(
             headerBuilder: (BuildContext context, bool isExpanded) {
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: NetworkImage('https://i.ibb.co/xHhxjms/podcast-icon.png'),
-                  radius: 25,
+                leading: Hero(
+                  tag: heroTag,
+                  child: CircleAvatar(
+                    backgroundImage: NetworkImage('https://i.ibb.co/xHhxjms/podcast-icon.png'),
+                    radius: 25,
+                  ),
                 ),
                 title: Text(
                   widget.podcast['title'] ?? 'No Title',
