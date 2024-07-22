@@ -40,13 +40,18 @@ dependencies:
   firebase_vertexai: ^0.1.1
   firebase_core: ^2.25.4
   cloud_firestore: ^4.15.4
+  firebase_storage: ^11.6.5
+  firebase_analytics: ^10.8.5
   intl: ^0.18.0
   webview_flutter: ^4.4.2  # Use the latest version available
   js: ^0.6.3  # Add this line if it's not already present
-  firebase_analytics: ^10.8.5
   cached_network_image: ^3.2.3
   carousel_slider: ^4.2.1 
   image: ^3.0.2
+  xml: ^6.3.0
+  dio: ^5.0.0
+  file_picker: ^5.0.0
+  crypto: ^3.0.2
 
 dev_dependencies:
   flutter_test:

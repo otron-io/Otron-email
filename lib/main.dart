@@ -1,6 +1,5 @@
 // --IMPORTS--
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -14,6 +13,9 @@ import 'package:home/pages/podcast_creation_page.dart';
 import 'package:home/theme/theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:home/podcasts.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data';
+import 'package:xml/xml.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,31 +70,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   Widget _buildApp() {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
-      return _buildMaterialApp();
-    } else {
-      return _buildCupertinoApp();
-    }
-  }
-
-  Widget _buildMaterialApp() {
     return MaterialApp(
       title: 'Otron Email',
       theme: appTheme,
       home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
-    );
-  }
-
-  Widget _buildCupertinoApp() {
-    return CupertinoApp(
-      title: 'Otron Email',
-      theme: CupertinoThemeData(
-        primaryColor: appTheme.colorScheme.primary,
-        brightness: appTheme.brightness,
-      ),
-      home: CupertinoPageScaffold(
-        child: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
-      ),
     );
   }
 
@@ -173,6 +154,76 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class RssGenerator {
+  static String generateRssFeed(List<Map<String, String>> items) {
+    final builder = XmlBuilder();
+    builder.processing('xml', 'version="1.0"');
+    builder.element('rss', nest: () {
+      builder.attribute('version', '2.0');
+      builder.element('channel', nest: () {
+        builder.element('title', nest: 'My RSS Feed');
+        builder.element('description', nest: 'A sample RSS feed');
+        builder.element('link', nest: 'https://example.com');
+        
+        for (var item in items) {
+          builder.element('item', nest: () {
+            builder.element('title', nest: item['title']);
+            builder.element('description', nest: item['description']);
+            builder.element('link', nest: item['link']);
+            builder.element('pubDate', nest: item['pubDate']);
+          });
+        }
+      });
+    });
+
+    return builder.buildDocument().toXmlString(pretty: true);
+  }
+}
+
+class StorageUtils {
+  static Future<String> uploadRssFeed(String rssFeedContent, String fileName) async {
+    final bytes = Uint8List.fromList(rssFeedContent.codeUnits);
+    final ref = FirebaseStorage.instance.ref().child('rss_feeds/$fileName');
+    final uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'application/rss+xml'));
+    final snapshot = await uploadTask.whenComplete(() {});
+    return await snapshot.ref.getDownloadURL();
+  }
+}
+
+class RssUploadWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      child: Text('Generate and Upload RSS Feed'),
+      onPressed: () async {
+        final items = [
+          {
+            'title': 'First Item',
+            'description': 'This is the first item in our RSS feed.',
+            'link': 'https://example.com/first-item',
+            'pubDate': 'Mon, 06 Sep 2021 12:00:00 GMT',
+          },
+          {
+            'title': 'Second Item',
+            'description': 'This is the second item in our RSS feed.',
+            'link': 'https://example.com/second-item',
+            'pubDate': 'Tue, 07 Sep 2021 12:00:00 GMT',
+          },
+        ];
+
+        final rssFeedContent = RssGenerator.generateRssFeed(items);
+        
+        try {
+          final downloadURL = await StorageUtils.uploadRssFeed(rssFeedContent, 'feed.xml');
+          print('RSS feed uploaded successfully. Download URL: $downloadURL');
+        } catch (e) {
+          print('Error uploading RSS feed: $e');
+        }
+      },
     );
   }
 }

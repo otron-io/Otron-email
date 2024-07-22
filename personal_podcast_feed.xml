@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>My Personal Podcast</title>
+    <link>https://example.com/my-podcast</link>
+    <language>en-us</language>
+    <copyright>Copyright 2023</copyright>
+    <itunes:subtitle>A podcast about current events and news analysis</itunes:subtitle>
+    <itunes:author>Your Name</itunes:author>
+    <itunes:summary>
+      This is my personal podcast where I discuss and analyze current events and news stories.
+    </itunes:summary>
+    <description>
+      This is my personal podcast where I discuss and analyze current events and news stories.
+    </description>
+    <itunes:owner>
+      <itunes:name>Your Name</itunes:name>
+      <itunes:email>your.email@example.com</itunes:email>
+    </itunes:owner>
+    <itunes:image href="https://example.com/my-podcast-cover.jpg"/>
+    <itunes:category text="News"/>
+    <itunes:category text="Politics"/>
+    
+    <item>
+      <title>Biden's Covid Bombshell &amp; The Migrant Crime Myth</title>
+      <itunes:author>Your Name</itunes:author>
+      <itunes:subtitle>President Biden tested positive for Covid while facing pressure to exit the 2024 race. We also debunk the myth of migrant-driven crime surges...</itunes:subtitle>
+      <itunes:summary>
+        Welcome to "Your Email Podcast," your weekly dose of insightful news and snarky commentary, straight from your inbox! This week, we've got a real rollercoaster ride from The New York Times, featuring everything from immigration debates to presidential health scares. We discuss the myth of migrant crime, Biden's potential exit from the 2024 race, his positive Covid test, and introduce The Morning newsletter.
+
+        Related links:
+        - https://buildspace.so/s5/week/1
+        - https://sage.buildspace.so/nws5/1
+        - https://example3.com
+        - https://example4.com
+      </itunes:summary>
+      <enclosure url="https://firebasestorage.googleapis.com/v0/b/otron-email-426615.appspot.com/o/podcasts%2Fnyt.mp3?alt=media&amp;token=2958778b-57bd-47a8-9162-1064cf82e8e3" length="12345678" type="audio/mpeg"/>
+      <guid>https://firebasestorage.googleapis.com/v0/b/otron-email-426615.appspot.com/o/podcasts%2Fnyt.mp3?alt=media&amp;token=2958778b-57bd-47a8-9162-1064cf82e8e3</guid>
+      <pubDate>Wed, 01 Mar 2023 08:00:00 GMT</pubDate>
+      <itunes:duration>00:15:00</itunes:duration>
+    </item>
+  </channel>
+</rss>
