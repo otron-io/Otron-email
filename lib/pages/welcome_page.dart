@@ -1,6 +1,5 @@
 //--IMPORTS--
 import 'package:flutter/material.dart';
-import 'storage_test_page.dart';
 
 //--CLASS--
 class WelcomePage extends StatelessWidget {
@@ -37,19 +36,6 @@ class WelcomePage extends StatelessWidget {
                   ElevatedButton(
                     onPressed: onGetStarted,
                     child: Text('View My Podcasts'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(200, 50),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => StorageTestPage()),
-                      );
-                    },
-                    child: Text('Test RSS Feed'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(200, 50),
                     ),
