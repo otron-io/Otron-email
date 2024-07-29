@@ -3,6 +3,7 @@
 
 // --DOMAIN LIST--
 final List<String> availableNewsletters = [
+  '*@*',  // Add this wildcard option
   'buildspace.so',
   'substack.com',
   'morningbrew.com',
@@ -27,4 +28,5 @@ final List<String> availableNewsletters = [
   'latimes.com',
   'wsj.com',
   'usatoday.com',
+  'kindredbraverly.com',
 ];

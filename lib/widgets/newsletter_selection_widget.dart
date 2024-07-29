@@ -4,12 +4,14 @@ class NewsletterSelectionWidget extends StatefulWidget {
   final List<String> availableNewsletters;
   final List<String> selectedNewsletters;
   final ValueChanged<List<String>> onChanged;
+  final ValueChanged<DateTimeRange?> onDateRangeChanged;
 
   const NewsletterSelectionWidget({
     Key? key,
     required this.availableNewsletters,
     required this.selectedNewsletters,
     required this.onChanged,
+    required this.onDateRangeChanged,
   }) : super(key: key);
 
   @override
@@ -21,6 +23,8 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
   late TextEditingController _searchController;
   List<String> _filteredItems = [];
   String _customItem = '';
+  String _selectedDateOption = 'Last 7 days';
+  DateTimeRange? _customDateRange;
 
   @override
   void initState() {
@@ -55,6 +59,51 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
         _filteredItems = widget.availableNewsletters;
       });
     }
+  }
+
+  void _updateDateRange() {
+    DateTimeRange? newRange;
+    switch (_selectedDateOption) {
+      case 'Today':
+        final now = DateTime.now();
+        newRange = DateTimeRange(start: now, end: now);
+        break;
+      case 'Last 7 days':
+        final now = DateTime.now();
+        newRange = DateTimeRange(start: now.subtract(Duration(days: 7)), end: now);
+        break;
+      case 'Last 30 days':
+        final now = DateTime.now();
+        newRange = DateTimeRange(start: now.subtract(Duration(days: 30)), end: now);
+        break;
+      case 'Custom range':
+        newRange = _customDateRange;
+        break;
+    }
+    widget.onDateRangeChanged(newRange);
+  }
+
+  Widget _buildNewsletterChip(String newsletter) {
+    String label = newsletter == '*@*' ? 'All Newsletters' : newsletter;
+    return FilterChip(
+      label: Text(label),
+      selected: _selectedItems.contains(newsletter),
+      onSelected: (bool selected) {
+        setState(() {
+          if (selected) {
+            if (newsletter == '*@*') {
+              _selectedItems = ['*@*'];
+            } else {
+              _selectedItems.remove('*@*');
+              _selectedItems.add(newsletter);
+            }
+          } else {
+            _selectedItems.remove(newsletter);
+          }
+          widget.onChanged(_selectedItems);
+        });
+      },
+    );
   }
 
   @override
@@ -100,20 +149,7 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
           spacing: 8,
           runSpacing: 4,
           children: [
-            ..._filteredItems.map((item) => FilterChip(
-              label: Text(item),
-              selected: _selectedItems.contains(item),
-              onSelected: (bool selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedItems.add(item);
-                  } else {
-                    _selectedItems.remove(item);
-                  }
-                  widget.onChanged(_selectedItems);
-                });
-              },
-            )),
+            ..._filteredItems.map((item) => _buildNewsletterChip(item)),
             if (_customItem.isNotEmpty && !_filteredItems.contains(_customItem))
               FilterChip(
                 label: Text(_customItem),
@@ -122,6 +158,48 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
               ),
           ],
         ),
+        const SizedBox(height: 16),
+        Text(
+          'Select Date Range',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        DropdownButton<String>(
+          value: _selectedDateOption,
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedDateOption = newValue!;
+              _updateDateRange();
+            });
+          },
+          items: <String>['Today', 'Last 7 days', 'Last 30 days', 'Custom range']
+              .map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+        ),
+        if (_selectedDateOption == 'Custom range')
+          ElevatedButton(
+            onPressed: () async {
+              final DateTimeRange? picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now(),
+                initialDateRange: _customDateRange,
+              );
+              if (picked != null && picked != _customDateRange) {
+                setState(() {
+                  _customDateRange = picked;
+                  _updateDateRange();
+                });
+              }
+            },
+            child: Text(_customDateRange == null
+                ? 'Select Custom Range'
+                : '${_customDateRange!.start.toLocal().toString().split(' ')[0]} - ${_customDateRange!.end.toLocal().toString().split(' ')[0]}'),
+          ),
         const SizedBox(height: 16),
         Text(
           'Selected Items',

@@ -24,8 +24,8 @@
       'urls': 'https://buildspace.so/s5/week/1, https://sage.buildspace.so/nws5/1, https://example3.com, https://example4.com',
     },
     {
-      'title': 'Buildspace w4',
-      'summary': 'Week 4 newsletters',
+      'title': 'Buildspace w5',
+      'summary': 'Week 5 newsletters',
       'content': '',
       'audioPath': 'audio/buildspace_w4.mp3',
       'type': 'upcoming',

@@ -42,15 +42,18 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 16),
-                  // ElevatedButton(
-                  //   onPressed: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (context) => StorageTestPage()),
-                  //     );
-                  //   },
-                  //   child: Text('Test Storage'),
-                  // ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => StorageTestPage()),
+                      );
+                    },
+                    child: Text('Test RSS Feed'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(200, 50),
+                    ),
+                  ),
                 ],
               ),
             ),

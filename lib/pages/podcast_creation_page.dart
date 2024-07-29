@@ -16,6 +16,12 @@ import 'package:home/widgets/newsletter_selection_widget.dart';
 import 'package:home/newsletters.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:home/widgets/email_review_widget.dart';
+import 'package:home/utils/storage_utils.dart';
+import 'package:home/widgets/schedule_podcast_widget.dart';
+import 'package:just_audio/just_audio.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
 
 // --PODCAST CREATION PAGE CLASS--
 class PodcastCreationPage extends StatefulWidget {
@@ -43,6 +49,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   List<String> _customFilters = [];
   bool _isSignedIn = false;
   bool _useSampleData = false;
+  DateTimeRange? _selectedDateRange;
 
   @override
   void initState() {
@@ -76,11 +83,11 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
               ],
             ),
           )
-        : SingleChildScrollView( // Add this to make the content scrollable
-            child: Padding( // Add padding to prevent content from touching the edges
+        : SingleChildScrollView(
+            child: Padding(
               padding: EdgeInsets.all(16),
-              child: ConstrainedBox( // Constrain the Stepper's width
-                constraints: BoxConstraints(maxWidth: 600), // Adjust this value as needed
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 600),
                 child: Stepper(
                   type: StepperType.vertical,
                   currentStep: _currentStep,
@@ -93,7 +100,11 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                       });
                       await _generateSamplePodcast();
                     } else if (_currentStep == 2) {
-                      _showComingSoonMessage();
+                      setState(() {
+                        _currentStep += 1;
+                      });
+                    } else if (_currentStep == 3) {
+                      await _updateRssFeed('default', _generatedPodcast!);
                     }
                   },
                   onStepCancel: () {
@@ -113,7 +124,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                     Step(
                       title: const Text('Review Emails'),
                       content: SizedBox(
-                        height: 400, // Adjust this value as needed
+                        height: 400,
                         child: _buildEmailReview(),
                       ),
                       isActive: _currentStep >= 1,
@@ -126,16 +137,10 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                       state: _currentStep > 2 ? StepState.complete : StepState.indexed,
                     ),
                     Step(
-                      title: const Text('Set Air Day'),
-                      content: _buildComingSoon(),
-                      isActive: false,
-                      state: StepState.disabled,
-                    ),
-                    Step(
                       title: const Text('Schedule Podcast'),
-                      content: _buildComingSoon(),
-                      isActive: false,
-                      state: StepState.disabled,
+                      content: _buildSchedulePodcastUI(),
+                      isActive: _currentStep >= 3,
+                      state: _currentStep > 3 ? StepState.complete : StepState.indexed,
                     ),
                   ],
                 ),
@@ -146,17 +151,33 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   }
 
   Widget _buildNewsletterSelection() {
-    return SizedBox(
-      width: double.infinity,
-      child: NewsletterSelectionWidget(
-        availableNewsletters: _availableNewsletters,
-        selectedNewsletters: _selectedNewsletters,
-        onChanged: (List<String> selectedItems) {
-          setState(() {
-            _selectedNewsletters = selectedItems;
-          });
-        },
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        NewsletterSelectionWidget(
+          availableNewsletters: _availableNewsletters,
+          selectedNewsletters: _selectedNewsletters,
+          onChanged: (List<String> selectedItems) {
+            setState(() {
+              _selectedNewsletters = selectedItems;
+            });
+          },
+          onDateRangeChanged: (DateTimeRange? dateRange) {
+            if (dateRange != null) {
+              // Ensure the time is set to the start and end of the day in local time
+              final start = DateTime(dateRange.start.year, dateRange.start.month, dateRange.start.day);
+              final end = DateTime(dateRange.end.year, dateRange.end.month, dateRange.end.day, 23, 59, 59);
+              setState(() {
+                _selectedDateRange = DateTimeRange(start: start, end: end);
+              });
+            } else {
+              setState(() {
+                _selectedDateRange = null;
+              });
+            }
+          },
+        ),
+      ],
     );
   }
 
@@ -223,8 +244,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     try {
       bool isSignedIn = await _emailService.isSignedIn();
       if (!isSignedIn) {
-        await _emailService.signIn();
-        isSignedIn = await _emailService.isSignedIn();
+        isSignedIn = await _emailService.signIn();
       }
 
       if (isSignedIn) {
@@ -353,16 +373,13 @@ The Gourmet Gazette Team
   }
 
   Future<void> _fetchEmails() async {
-    setState(() {
-      _isLoading = true;
-      _loadingMessage = 'Fetching emails...';
-    });
-
     try {
-      final fetchedEmails = await _emailService.fetchEmails(_selectedNewsletters);
+      final newsletters = _selectedNewsletters.contains('All newsletters') 
+        ? ['*@*'] 
+        : _selectedNewsletters;
+      final fetchedEmails = await _emailService.fetchEmails(newsletters, _selectedDateRange);
       setState(() {
         _fetchedEmails = fetchedEmails ?? [];
-        _isLoading = false;
       });
     } catch (e) {
       print('Error fetching emails: $e');
@@ -371,7 +388,6 @@ The Gourmet Gazette Team
       );
       setState(() {
         _fetchedEmails = [];
-        _isLoading = false;
       });
     }
   }
@@ -403,91 +419,158 @@ The Gourmet Gazette Team
 
     setState(() {
       _isLoading = true;
-      _loadingMessage = 'Reading your email...';
+      _loadingMessage = 'Analyzing your emails...';
     });
 
     try {
-      // Generate podcast title and subtitle
-      final now = DateTime.now();
-      final sevenDaysAgo = now.subtract(Duration(days: 7));
-      final dateFormat = DateFormat('MMM d, yyyy');
-      final title = 'Your Personal Podcast: Last Seven Days';
-      final subtitle = '${dateFormat.format(sevenDaysAgo)} - ${dateFormat.format(now)}';
-
       // Prepare email data for the prompt
       final emailData = _fetchedEmails.map((email) => {
         'subject': email['subject'],
         'sender': email['from'],
         'body': email['body'],
+        'url': email['url'], // Make sure this field exists in your email data
       }).toList();
 
-      // Generate podcast content using VertexAI
-      final prompt = emailSummaryPrompt.replaceAll('{Placeholder for raw email data}', jsonEncode(emailData));
-      
+      // Generate the main content (description) using the efficientDailyEmailSummaryPrompt
+      final descriptionPrompt = efficientDailyEmailSummaryPrompt.replaceAll('{Placeholder for raw email data}', jsonEncode(emailData));
+      final generatedDescription = await _vertexAIService.generateContent(descriptionPrompt);
+
+      // Generate the summary using the separate generateSummary function
+      final urls = emailData
+          .map((email) => email['url'] as String?)
+          .where((url) => url != null && url.isNotEmpty)
+          .cast<String>()
+          .toList();
+      final generatedSummary = await _vertexAIService.generateSummary(generatedDescription, urls);
+
+      // Generate podcast title
+      final generatedTitle = await _vertexAIService.generatePodcastTitle(generatedDescription);
+
       setState(() {
-        _loadingMessage = 'Writing the script...';
+        _loadingMessage = 'Preparing audio...';
       });
 
-      final generatedContent = await _vertexAIService.generateContent(prompt);
-
-      // Trim the generated content to the first 40 words
-      final List<String> words = generatedContent.split(' ');
-      final String trimmedContent = words.take(40).join(' ');
-
-      // Set loading message for audio generation
-      setState(() {
-        _loadingMessage = 'Voicing over...';
-      });
-
-      // Generate audio
+      // Generate audio (use the full content for the efficient version)
       final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app'; // Your TTS API URL
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'text': trimmedContent}),
+        body: json.encode({'text': generatedDescription}),
       );
 
       if (response.statusCode == 200) {
+        // Create a smart file name
+        final dateFormat = DateFormat('yyyyMMdd');
+        final timeFormat = DateFormat('HHmmss');
+        final sanitizedTitle = generatedTitle.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toLowerCase();
+        final fileName = 'audio_${dateFormat.format(DateTime.now())}_${timeFormat.format(DateTime.now())}_${sanitizedTitle}.mp3';
+        
+        // Upload audio file to Firebase Storage
+        final audioUrl = await StorageUtils.uploadFile(response.bodyBytes, 'audio/$fileName');
+
         setState(() {
-          _generatedPodcast = {
-            'title': title,
-            'subtitle': subtitle,
-            'content': generatedContent,
-            'audioData': response.bodyBytes, // Store as 'audioData' instead of 'audioPath'
-            'createdAt': now.toIso8601String(),
-          };
-          _isLoading = false;
+          if (mounted) {
+            _generatedPodcast = {
+              'title': generatedTitle,
+              'subtitle': 'Daily Email Digest - ${DateFormat('MMMM d, yyyy').format(DateTime.now())}',
+              'summary': generatedSummary,
+              'description': generatedDescription,
+              'audioData': response.bodyBytes,
+              'audioUrl': audioUrl,
+              'audioFileName': fileName,
+              'createdAt': DateTime.now().toIso8601String(),
+              'urls': urls.join(', '),
+            };
+            _isLoading = false;
+          }
         });
+
+        print('Generated podcast data:');
+        print('Title: ${_generatedPodcast!['title']}');
+        print('Subtitle: ${_generatedPodcast!['subtitle']}');
+        print('Summary length: ${_generatedPodcast!['summary'].length} characters');
+        print('Description length: ${_generatedPodcast!['description'].length} characters');
+        print('Audio URL: ${_generatedPodcast!['audioUrl']}');
+        print('Audio file name: ${_generatedPodcast!['audioFileName']}');
+        print('Created at: ${_generatedPodcast!['createdAt']}');
+        print('URLs: ${_generatedPodcast!['urls']}');
       } else {
         throw Exception('Failed to generate audio');
       }
     } catch (e) {
       print('Error generating sample podcast: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate sample podcast. Please try again.')),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate daily digest. Please try again.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildSchedulePodcastUI() {
+    final now = DateTime.now();
+    final dateFormat = DateFormat('MMMM d, yyyy');
+    final todayDate = dateFormat.format(now);
+    
+    final prefilledPodcastData = {
+      ..._generatedPodcast ?? {},
+      'author': 'Otron Daily',
+      'subtitle': todayDate,
+    };
+
+    return SchedulePodcastWidget(
+      podcastData: prefilledPodcastData,
+      onSchedule: _updateRssFeed,
+    );
+  }
+
+  Future<void> _updateRssFeed(String selectedFeed, Map<String, dynamic> podcastData) async {
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = 'Updating RSS feed...';
+    });
+
+    try {
+      final feedUrl = await StorageUtils.getRssFeedUrl(selectedFeed);
+      if (feedUrl == null) {
+        throw Exception('Failed to get RSS feed URL');
+      }
+
+      final response = await http.post(
+        Uri.parse('https://update-rss-feed-2ghwz42v7q-uc.a.run.app'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'feedName': selectedFeed,
+          'newItem': podcastData,
+        }),
       );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Podcast scheduled and RSS feed updated successfully!')),
+        );
+
+        // Call the onAddPodcast callback
+        widget.onAddPodcast(podcastData);
+
+        // Navigate back or to a confirmation screen
+        Navigator.of(context).pop();
+      } else {
+        throw Exception('Failed to update RSS feed: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating RSS feed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update RSS feed: ${e.toString()}')),
+      );
+    } finally {
       setState(() {
         _isLoading = false;
       });
     }
-  }
-
-  Widget _buildComingSoon() {
-    return Center(
-      child: Text(
-        'Coming Soon!',
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-    );
-  }
-
-  void _showComingSoonMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('This feature is coming soon!'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _schedulePodcast() async {
@@ -521,5 +604,24 @@ The Gourmet Gazette Team
   int _getDayNumber(String day) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     return days.indexOf(day) + 1;
+  }
+}
+
+class MyCustomSource extends StreamAudioSource {
+  final Uint8List _audioData;
+
+  MyCustomSource(this._audioData);
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    start ??= 0;
+    end ??= _audioData.length;
+    return StreamAudioResponse(
+      sourceLength: _audioData.length,
+      contentLength: end - start,
+      offset: start,
+      stream: Stream.value(_audioData.sublist(start, end)),
+      contentType: 'audio/mpeg',
+    );
   }
 }

@@ -42,12 +42,12 @@ class GenerateSampleWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            generatedPodcast!['title'],
+            generatedPodcast!['title'] ?? 'No Title',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           SizedBox(height: 8),
           Text(
-            generatedPodcast!['subtitle'],
+            generatedPodcast!['subtitle'] ?? 'No Subtitle',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           SizedBox(height: 16),
@@ -58,7 +58,20 @@ class GenerateSampleWidget extends StatelessWidget {
             ),
           SizedBox(height: 16),
           Text(
-            generatedPodcast!['content'],
+            'Summary:',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          SelectableText(
+            generatedPodcast!['summary'] ?? 'No summary available',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Description:',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          SelectableText(
+            generatedPodcast!['description'] ?? 'No description available',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           SizedBox(height: 16),
@@ -69,7 +82,7 @@ class GenerateSampleWidget extends StatelessWidget {
         ],
       );
     } else {
-      return Text('No sample generated yet.');
+      return Text('Failed to generate sample. Please try again.');
     }
   }
 

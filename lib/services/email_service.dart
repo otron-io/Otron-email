@@ -40,7 +40,7 @@ class EmailService {
   }
 
   // --FETCH EMAILS METHOD--
-  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains) async {
+  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange) async {
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signInSilently();
       if (account == null) {
@@ -63,11 +63,35 @@ class EmailService {
       );
 
       final GmailApi gmailApi = GmailApi(authClient);
-      final String domainQuery = domains.map((domain) => 'from:$domain').join(' OR ');
+      
+      String domainQuery;
+      if (domains.contains('All newsletters') || domains.contains('*@*')) {
+        // If 'All newsletters' or '*@*' is selected, fetch all emails
+        domainQuery = '';
+      } else {
+        // Handle multiple domains and wildcards
+        domainQuery = domains.map((domain) {
+          if (domain.contains('*')) {
+            return 'from:(*@${domain.replaceAll('*', '')})';
+          } else {
+            return 'from:(*@$domain)';
+          }
+        }).join(' OR ');
+      }
+
+      String dateQuery = '';
+      if (dateRange != null) {
+        // Convert local time to UTC
+        final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
+        // Add one day to the end date and convert to UTC to include the full day
+        final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
+        dateQuery = ' after:$startDate before:$endDate';
+      }
+
       final ListMessagesResponse response = await gmailApi.users.messages.list(
         'me',
-        q: domainQuery,
-        maxResults: 10,
+        q: domainQuery.isEmpty ? dateQuery.trim() : '($domainQuery)$dateQuery',
+        maxResults: 50, // Increased from 10 to 50
       );
 
       final emailDetails = <Map<String, dynamic>>[];
@@ -111,16 +135,21 @@ class EmailService {
   }
 
   String _getBody(MessagePart? part) {
-    if (part?.mimeType == 'text/html' && part?.body?.data != null) {
-      return utf8.decode(base64Url.decode(part!.body!.data!));
+    if (part == null) return '';
+
+    if (part.mimeType == 'text/html' && part.body?.data != null) {
+      return utf8.decode(base64Url.decode(part.body!.data!));
     }
-    if (part?.parts != null) {
-      for (final subPart in part!.parts!) {
+    if (part.mimeType == 'text/plain' && part.body?.data != null) {
+      return utf8.decode(base64Url.decode(part.body!.data!));
+    }
+    if (part.parts != null) {
+      for (final subPart in part.parts!) {
         final body = _getBody(subPart);
         if (body.isNotEmpty) return body;
       }
     }
-    return '';
+    return part.body?.data ?? '';
   }
 
   List<String> _extractImagesFromHtml(String htmlContent) {
@@ -192,13 +221,5 @@ class EmailService {
     final proxyUrl = '$baseUrl/proxy_image';
     final encodedUrl = Uri.encodeComponent(originalUrl);
     return '$proxyUrl?url=$encodedUrl';
-  }
-
-  // --RENDER SIGN IN BUTTON METHOD--
-  Widget renderSignInButton() {
-    return ElevatedButton(
-      onPressed: signIn,
-      child: Text('Sign in with Google'),
-    );
   }
 }

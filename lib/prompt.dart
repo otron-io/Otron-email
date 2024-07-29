@@ -21,7 +21,7 @@ Example Input:
     {
       "subject": "ur a legend – update #1 submitted.",
       "sender": "buildspace",
-      "body": "sup arnoldas. just wanted to let you know, we got your s5 week #1 update — fk yea. btw -- if you need to make some changes to your update, click here. many people don't ever make it past step one. they overthink, and overcomplicate. but, you didn’t. keep it up. we'll see you in the next one."
+      "body": "sup arnoldas. just wanted to let you know, we got your s5 week #1 update — fk yea. btw -- if you need to make some changes to your update, click here. many people don't ever make it past step one. they overthink, and overcomplicate. but, you didn't. keep it up. we'll see you in the next one."
     },
     {
       "subject": "n&w s5 -- w1 wrap up. ty all.",
@@ -55,7 +55,7 @@ Example Input:
     {
       "subject": "ur a legend – update #1 submitted.",
       "sender": "buildspace",
-      "body": "sup arnoldas. just wanted to let you know, we got your s5 week #1 update — fk yea. btw -- if you need to make some changes to your update, click here. many people don't ever make it past step one. they overthink, and overcomplicate. but, you didn’t. keep it up. we'll see you in the next one."
+      "body": "sup arnoldas. just wanted to let you know, we got your s5 week #1 update — fk yea. btw -- if you need to make some changes to your update, click here. many people don't ever make it past step one. they overthink, and overcomplicate. but, you didn't. keep it up. we'll see you in the next one."
     },
     {
       "subject": "n&w s5 -- w1 wrap up. ty all.",
@@ -94,4 +94,45 @@ Example Output:
 ]
 
 Please only return JSON - no other words, keys or anything else, just pure json.
+''';
+
+const String efficientDailyEmailSummaryPrompt = '''
+Analyze the following email data: {Placeholder for raw email data}
+
+Instructions:
+Create a concise, efficient daily podcast script summarizing the key information from various emails. The podcast is called "Your Daily Email Digest." Follow these guidelines:
+
+1. Group information by topics or themes, not by individual emails.
+2. Prioritize the most important or time-sensitive information.
+3. Be direct and to the point, avoiding unnecessary details.
+4. Include specific facts, figures, or deadlines when relevant.
+5. Mention the sources (email senders) for context, but focus on the content.
+6. Aim for a length that can be comfortably read in about 2-3 minutes.
+7. Ensure the content is suitable for an audio transcript, avoiding long URLs or details that are impractical to read aloud.
+8. For each main topic or theme, seamlessly integrate an actionable insight or important implication without explicitly labeling it as a "key takeaway."
+9. Use transitional phrases to connect information with its relevance or actionable insight.
+
+Structure:
+1. Brief introduction
+2. 3-5 main points or topics, each summarized in 2-3 sentences:
+   - Present the information
+   - Smoothly transition to its importance or actionable insight
+3. Any urgent calls to action or deadlines
+4. Quick mention of any less critical but noteworthy items
+5. Concise conclusion that reinforces the most important points or actions
+
+Example Output:
+"Welcome to Your Daily Email Digest for [current date]. Let's dive into what's important today.
+
+Apple has announced its new M3 chip, promising 40% faster performance. The rollout starts next month, according to TechCrunch. This might influence your decision if you're planning to upgrade your Mac soon.
+
+In the markets, InvestDaily reports the S&P 500 is up 2.3% this week, with tech and healthcare leading the gains. Now might be a good time to review your portfolio allocation in these sectors.
+
+An urgent reminder from HR: the annual team survey deadline is tomorrow at 5 PM. It's crucial for the upcoming planning session, so make sure to set aside 15 minutes today to complete it and ensure your voice is heard.
+
+Briefly noted: Weather.com predicts rain for the weekend, so you might want to plan some indoor activities. Also, the office charity drive has reached the halfway mark at \$5,000. If you haven't contributed yet, there's still time to make an impact.
+
+To wrap up, consider your tech upgrade plans, review your investments, and don't forget that team survey. Stay informed and proactive. That's all for today's digest."
+
+Remember to maintain a professional yet engaging tone, focusing on delivering maximum value and actionable insights without explicitly labeling them.
 ''';

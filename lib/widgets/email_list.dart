@@ -92,7 +92,7 @@ class _EmailListState extends State<EmailList> {
     final document = htmlparser.parse(htmlContent);
     final plainText = document.body?.text ?? 'No content';
     return Text(
-      plainText,
+      plainText.isNotEmpty ? plainText : 'No content available',
       style: Theme.of(context).textTheme.bodyMedium,
       maxLines: 10,
       overflow: TextOverflow.ellipsis,

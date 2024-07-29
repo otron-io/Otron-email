@@ -5,15 +5,19 @@ import 'dart:developer' as developer;
 class StorageUtils {
   static Future<String> uploadFile(Uint8List fileBytes, String fileName) async {
     try {
-      final ref = FirebaseStorage.instance.ref().child('uploads/$fileName');
+      print('Uploading file: $fileName');
+      print('File size: ${fileBytes.length} bytes');
+      
+      final ref = FirebaseStorage.instance.ref().child(fileName);
       final uploadTask = ref.putData(fileBytes);
       
       final snapshot = await uploadTask.whenComplete(() {});
       final downloadURL = await snapshot.ref.getDownloadURL();
-      developer.log('File uploaded successfully. Download URL: $downloadURL');
+      
+      print('File uploaded successfully. Download URL: $downloadURL');
       return downloadURL;
     } catch (e) {
-      developer.log('Error uploading file: $e');
+      print('Error uploading file: $e');
       throw Exception('Failed to upload file: $e');
     }
   }
