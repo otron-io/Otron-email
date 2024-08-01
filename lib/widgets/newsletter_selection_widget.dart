@@ -149,7 +149,8 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
           spacing: 8,
           runSpacing: 4,
           children: [
-            ..._filteredItems.map((item) => _buildNewsletterChip(item)),
+            _buildNewsletterChip('*@*'),
+            ..._filteredItems.where((item) => item != '*@*').map((item) => _buildNewsletterChip(item)),
             if (_customItem.isNotEmpty && !_filteredItems.contains(_customItem))
               FilterChip(
                 label: Text(_customItem),

@@ -18,6 +18,7 @@ class EmailService {
   );
 
   String? userName;
+  String? _accessToken;
 
   // --IS SIGNED IN METHOD--
   Future<bool> isSignedIn() async {
@@ -40,7 +41,7 @@ class EmailService {
   }
 
   // --FETCH EMAILS METHOD--
-  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange) async {
+  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange, Function(int) updateProgress) async {
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signInSilently();
       if (account == null) {
@@ -49,13 +50,14 @@ class EmailService {
       }
 
       final GoogleSignInAuthentication auth = await account.authentication;
+      _accessToken = auth.accessToken;
       final authClient = authenticatedClient(
         http.Client(),
         AccessCredentials(
           AccessToken(
             'Bearer',
-            auth.accessToken!,
-            DateTime.now().toUtc().add(Duration(hours: 1)), // Use UTC time
+            _accessToken!,
+            DateTime.now().toUtc().add(Duration(hours: 1)),
           ),
           auth.idToken,
           [GmailApi.gmailReadonlyScope],
@@ -64,49 +66,76 @@ class EmailService {
 
       final GmailApi gmailApi = GmailApi(authClient);
       
-      String domainQuery;
-      if (domains.contains('All newsletters') || domains.contains('*@*')) {
-        // If 'All newsletters' or '*@*' is selected, fetch all emails
-        domainQuery = '';
-      } else {
-        // Handle multiple domains and wildcards
-        domainQuery = domains.map((domain) {
-          if (domain.contains('*')) {
-            return 'from:(*@${domain.replaceAll('*', '')})';
-          } else {
-            return 'from:(*@$domain)';
-          }
-        }).join(' OR ');
-      }
-
-      String dateQuery = '';
-      if (dateRange != null) {
-        // Convert local time to UTC
-        final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
-        // Add one day to the end date and convert to UTC to include the full day
-        final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
-        dateQuery = ' after:$startDate before:$endDate';
-      }
-
-      final ListMessagesResponse response = await gmailApi.users.messages.list(
-        'me',
-        q: domainQuery.isEmpty ? dateQuery.trim() : '($domainQuery)$dateQuery',
-        maxResults: 50, // Increased from 10 to 50
-      );
+      String domainQuery = _buildDomainQuery(domains);
+      String dateQuery = _buildDateQuery(dateRange);
 
       final emailDetails = <Map<String, dynamic>>[];
-      if (response.messages != null) {
-        for (final Message message in response.messages!) {
-          final msg = await gmailApi.users.messages.get('me', message.id!);
-          emailDetails.add(_parseMessage(msg));
+      String? pageToken;
+      
+      do {
+        final ListMessagesResponse response = await gmailApi.users.messages.list(
+          'me',
+          q: domainQuery.isEmpty ? dateQuery.trim() : '($domainQuery)$dateQuery',
+          maxResults: 100,
+          pageToken: pageToken,
+        );
+
+        if (response.messages != null) {
+          final batchedEmails = await _fetchEmailsBatch(response.messages!);
+          emailDetails.addAll(batchedEmails);
+          updateProgress(emailDetails.length);
         }
-      }
+
+        pageToken = response.nextPageToken;
+      } while (pageToken != null && emailDetails.length < 500);
 
       return emailDetails;
     } catch (e) {
       print('Error fetching emails: $e');
       return null;
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchEmailsBatch(List<Message> messages) async {
+    final batch = http.Client();
+    final futures = messages.map((message) async {
+      final url = 'https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}';
+      final response = await batch.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+      if (response.statusCode == 200) {
+        final msg = Message.fromJson(json.decode(response.body));
+        return _parseMessage(msg);
+      }
+      return null;
+    }).toList();
+
+    final results = await Future.wait(futures);
+    batch.close();
+    return results.whereType<Map<String, dynamic>>().toList();
+  }
+
+  String _buildDomainQuery(List<String> domains) {
+    if (domains.contains('All newsletters') || domains.contains('*@*')) {
+      return '';
+    }
+    return domains.map((domain) {
+      if (domain.contains('*')) {
+        return 'from:(*@${domain.replaceAll('*', '')})';
+      } else {
+        return 'from:(*@$domain)';
+      }
+    }).join(' OR ');
+  }
+
+  String _buildDateQuery(DateTimeRange? dateRange) {
+    if (dateRange == null) return '';
+    final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
+    final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
+    return ' after:$startDate before:$endDate';
   }
 
   // --PARSE MESSAGE METHOD--

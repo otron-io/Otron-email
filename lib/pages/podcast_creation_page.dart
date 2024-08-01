@@ -22,6 +22,7 @@ import 'package:just_audio/just_audio.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
+import 'dart:math';
 
 // --PODCAST CREATION PAGE CLASS--
 class PodcastCreationPage extends StatefulWidget {
@@ -373,13 +374,27 @@ The Gourmet Gazette Team
   }
 
   Future<void> _fetchEmails() async {
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = 'Fetching emails (0/500)...';
+    });
+
     try {
       final newsletters = _selectedNewsletters.contains('All newsletters') 
         ? ['*@*'] 
         : _selectedNewsletters;
-      final fetchedEmails = await _emailService.fetchEmails(newsletters, _selectedDateRange);
+      final fetchedEmails = await _emailService.fetchEmails(
+        newsletters, 
+        _selectedDateRange,
+        (progress) {
+          setState(() {
+            _loadingMessage = 'Fetching emails ($progress/500)...';
+          });
+        }
+      );
       setState(() {
         _fetchedEmails = fetchedEmails ?? [];
+        _isLoading = false;
       });
     } catch (e) {
       print('Error fetching emails: $e');
@@ -388,6 +403,7 @@ The Gourmet Gazette Team
       );
       setState(() {
         _fetchedEmails = [];
+        _isLoading = false;
       });
     }
   }
@@ -423,35 +439,22 @@ The Gourmet Gazette Team
     });
 
     try {
-      // Prepare email data for the prompt
-      final emailData = _fetchedEmails.map((email) => {
-        'subject': email['subject'],
-        'sender': email['from'],
-        'body': email['body'],
-        'url': email['url'], // Make sure this field exists in your email data
-      }).toList();
+      final fullPrompt = await _prepareEmailData();
+      final generatedDescription = await _generateDescription(fullPrompt);
+      final urls = _extractUrls(_fetchedEmails);
+      final generatedSummary = await _generateSummary(generatedDescription, urls);
+      final generatedTitle = await _generateTitle(generatedDescription);
 
-      // Generate the main content (description) using the efficientDailyEmailSummaryPrompt
-      final descriptionPrompt = efficientDailyEmailSummaryPrompt.replaceAll('{Placeholder for raw email data}', jsonEncode(emailData));
-      final generatedDescription = await _vertexAIService.generateContent(descriptionPrompt);
-
-      // Generate the summary using the separate generateSummary function
-      final urls = emailData
-          .map((email) => email['url'] as String?)
-          .where((url) => url != null && url.isNotEmpty)
-          .cast<String>()
-          .toList();
-      final generatedSummary = await _vertexAIService.generateSummary(generatedDescription, urls);
-
-      // Generate podcast title
-      final generatedTitle = await _vertexAIService.generatePodcastTitle(generatedDescription);
+      // Generate image
+      final imagePrompt = await _generateImagePrompt(generatedDescription);
+      final imageUrl = await _generateImage(imagePrompt);
 
       setState(() {
         _loadingMessage = 'Preparing audio...';
       });
 
       // Generate audio (use the full content for the efficient version)
-      final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app'; // Your TTS API URL
+      final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app'; // Updated TTS URL
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
@@ -480,6 +483,7 @@ The Gourmet Gazette Team
               'audioFileName': fileName,
               'createdAt': DateTime.now().toIso8601String(),
               'urls': urls.join(', '),
+              'imageUrl': imageUrl, // Add the image URL to the podcast data
             };
             _isLoading = false;
           }
@@ -494,6 +498,7 @@ The Gourmet Gazette Team
         print('Audio file name: ${_generatedPodcast!['audioFileName']}');
         print('Created at: ${_generatedPodcast!['createdAt']}');
         print('URLs: ${_generatedPodcast!['urls']}');
+        print('Image URL: ${_generatedPodcast!['imageUrl']}');
       } else {
         throw Exception('Failed to generate audio');
       }
@@ -507,6 +512,74 @@ The Gourmet Gazette Team
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<String> _prepareEmailData() async {
+    final emailData = _fetchedEmails.map((email) => {
+      'subject': email['subject'],
+      'sender': email['from'],
+      'body': email['body'],
+    }).toList();
+
+    // Format the date range
+    String dateRangeString = '';
+    if (_selectedDateRange != null) {
+      final startDate = DateFormat('MMMM d, yyyy').format(_selectedDateRange!.start);
+      final endDate = DateFormat('MMMM d, yyyy').format(_selectedDateRange!.end);
+      dateRangeString = 'for the period from $startDate to $endDate';
+    }
+
+    return efficientDailyEmailSummaryPrompt
+      .replaceAll('{Placeholder for raw email data}', jsonEncode(emailData))
+      .replaceAll('[current date]', dateRangeString);
+  }
+
+  Future<String> _generateDescription(String fullPrompt) async {
+    return await _vertexAIService.generateContent(fullPrompt);
+  }
+
+  List<String> _extractUrls(List<Map<String, dynamic>> emailData) {
+    return emailData
+      .map((email) => email['url'] as String?)
+      .where((url) => url != null && url.isNotEmpty)
+      .cast<String>()
+      .toList();
+  }
+
+  Future<String> _generateSummary(String description, List<String> urls) async {
+    return await _vertexAIService.generateSummary(description, urls);
+  }
+
+  Future<String> _generateTitle(String description) async {
+    String dateRangeString = '';
+    if (_selectedDateRange != null) {
+      final startDate = DateFormat('MMM d').format(_selectedDateRange!.start);
+      final endDate = DateFormat('MMM d, yyyy').format(_selectedDateRange!.end);
+      dateRangeString = '$startDate - $endDate';
+    } else {
+      dateRangeString = DateFormat('MMMM d, yyyy').format(DateTime.now());
+    }
+    return await _vertexAIService.generatePodcastTitle(description, dateRangeString);
+  }
+
+  Future<String> _generateImagePrompt(String description) async {
+    // Use the VertexAI service to generate an image prompt based on the podcast description
+    return await _vertexAIService.generateImagePrompt(description);
+  }
+
+  Future<String> _generateImage(String prompt) async {
+    final response = await http.post(
+      Uri.parse('https://generate-image-2ghwz42v7q-uc.a.run.app'), // Updated generate_image URL
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'prompt': prompt}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['image_url'];
+    } else {
+      throw Exception('Failed to generate image: ${response.body}');
     }
   }
 
@@ -524,6 +597,7 @@ The Gourmet Gazette Team
     return SchedulePodcastWidget(
       podcastData: prefilledPodcastData,
       onSchedule: _updateRssFeed,
+      selectedDateRange: _selectedDateRange,
     );
   }
 
@@ -539,11 +613,16 @@ The Gourmet Gazette Team
         throw Exception('Failed to get RSS feed URL');
       }
 
+      // Ensure the imageUrl is included in the podcastData
+      if (_generatedPodcast != null && _generatedPodcast!['imageUrl'] != null) {
+        podcastData['imageUrl'] = _generatedPodcast!['imageUrl'];
+      }
+
       final response = await http.post(
-        Uri.parse('https://update-rss-feed-2ghwz42v7q-uc.a.run.app'),
+        Uri.parse('https://update-rss-feed-2ghwz42v7q-uc.a.run.app'), // Updated update_rss_feed URL
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'feedName': selectedFeed,
+          'fileName': selectedFeed,
           'newItem': podcastData,
         }),
       );

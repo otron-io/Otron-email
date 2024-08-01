@@ -1,6 +1,9 @@
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'dart:math' show min;  // Add this import
+import 'dart:math' show min;
+import 'package:home/prompt.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class VertexAIService {
   late final GenerativeModel _model;
@@ -92,33 +95,35 @@ Please provide the summary without any additional explanations or meta-commentar
     }
   }
 
-  Future<String> generatePodcastTitle(String content) async {
-    try {
-      final prompt = '''
-Based on the following content, generate a catchy and unique podcast title. The title should:
-1. Always start with today's date in the format "MM/DD: "
-2. Be engaging and reflect the main theme or highlight of the content
-3. Be concise, ideally not exceeding 50 characters including the date
+  Future<String> generatePodcastTitle(String description, String dateRange) async {
+    final prompt = podcastTitlePrompt
+      .replaceAll('{Placeholder for description}', description)
+      .replaceAll('{Placeholder for date range}', dateRange);
 
-Content:
-$content
+    final content = [Content.text(prompt)];
+    final response = await _model.generateContent(content);
+    
+    if (response.text != null) {
+      print('Generated podcast title: ${response.text}');
+      return response.text!.trim();
+    } else {
+      print('No podcast title generated');
+      throw Exception('Failed to generate podcast title');
+    }
+  }
 
-Please provide only the title, without any additional explanation.
-''';
-
-      final promptContent = [Content.text(prompt)];
-      final response = await _model.generateContent(promptContent);
-      
-      if (response.text != null) {
-        print('Generated podcast title: ${response.text}');
-        return response.text!.trim();
-      } else {
-        print('No podcast title generated');
-        return 'No podcast title generated';
-      }
-    } catch (e) {
-      print('Error generating podcast title: $e');
-      return 'Error generating podcast title';
+  Future<String> generateImagePrompt(String fullDescription) async {
+    final prompt = imagePrompt.replaceAll('{Placeholder for transcript}', fullDescription);
+    
+    final content = [Content.text(prompt)];
+    final response = await _model.generateContent(content);
+    
+    if (response.text != null) {
+      print('Generated image prompt: ${response.text}');
+      return response.text!;
+    } else {
+      print('No image prompt generated');
+      throw Exception('Failed to generate image prompt');
     }
   }
 }

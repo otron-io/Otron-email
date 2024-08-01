@@ -59,6 +59,52 @@ class _StorageTestPageState extends State<StorageTestPage> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Storage Test'),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Connection Status: $_connectionStatus'),
+              SizedBox(height: 20),
+              Text('Select RSS Feed:'),
+              DropdownButton<String>(
+                value: _selectedRssFeed,
+                items: _rssFeedFiles.map((String file) {
+                  return DropdownMenuItem<String>(
+                    value: file,
+                    child: Text(file),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedRssFeed = newValue;
+                  });
+                },
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _updateRssFeed,
+                child: _isLoading ? CircularProgressIndicator() : Text('Update RSS Feed'),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _downloadRssFeed,
+                child: _isLoading ? CircularProgressIndicator() : Text('Download RSS Feed'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _updateRssFeed() async {
     if (_selectedRssFeed == null) return;
 
@@ -183,51 +229,5 @@ class _StorageTestPageState extends State<StorageTestPage> {
         _isLoading = false;
       });
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('RSS Feed Test'),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Connection Status: $_connectionStatus'),
-              SizedBox(height: 20),
-              Text('Select RSS Feed:'),
-              DropdownButton<String>(
-                value: _selectedRssFeed,
-                items: _rssFeedFiles.map((String file) {
-                  return DropdownMenuItem<String>(
-                    value: file,
-                    child: Text(file),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedRssFeed = newValue;
-                  });
-                },
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _updateRssFeed,
-                child: _isLoading ? CircularProgressIndicator() : Text('Update RSS Feed'),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _downloadRssFeed,
-                child: _isLoading ? CircularProgressIndicator() : Text('Download RSS Feed'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

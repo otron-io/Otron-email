@@ -97,42 +97,101 @@ Please only return JSON - no other words, keys or anything else, just pure json.
 ''';
 
 const String efficientDailyEmailSummaryPrompt = '''
-Analyze the following email data: {Placeholder for raw email data}
+Analyze the following email data. Note that the email content has been cleaned and may be truncated:
+
+{Placeholder for raw email data}
 
 Instructions:
 Create a concise, efficient daily podcast script summarizing the key information from various emails. The podcast is called "Your Daily Email Digest." Follow these guidelines:
 
-1. Group information by topics or themes, not by individual emails.
-2. Prioritize the most important or time-sensitive information.
-3. Be direct and to the point, avoiding unnecessary details.
-4. Include specific facts, figures, or deadlines when relevant.
-5. Mention the sources (email senders) for context, but focus on the content.
-6. Aim for a length that can be comfortably read in about 2-3 minutes.
-7. Ensure the content is suitable for an audio transcript, avoiding long URLs or details that are impractical to read aloud.
-8. For each main topic or theme, seamlessly integrate an actionable insight or important implication without explicitly labeling it as a "key takeaway."
-9. Use transitional phrases to connect information with its relevance or actionable insight.
+	1.	Prioritize content-rich newsletters and emails that share stories and provide insights.
+	2.	Group information by topics or themes, not by individual emails, but do not use TOPIC headers. Just incorporate the group names into the scrip.
+	3.	Separate action-based or advertisement content into a brief bullet point section.
+	4.	Include specific facts, figures, or deadlines when relevant.
+	5.	Mention the sources (email senders) for context, but focus on the content.
+	6.	Aim for a length that can be comfortably read in about 2-3 minutes.
+	7.	Ensure the content is suitable for an audio transcript, avoiding long URLs or details that are impractical to read aloud.
+	8.	Use natural, conversational transitions to connect information.
+	9.	Indicate if there is more detailed content available in the full email or through provided links.
 
 Structure:
-1. Brief introduction
-2. 3-5 main points or topics, each summarized in 2-3 sentences:
-   - Present the information
-   - Smoothly transition to its importance or actionable insight
-3. Any urgent calls to action or deadlines
-4. Quick mention of any less critical but noteworthy items
-5. Concise conclusion that reinforces the most important points or actions
+
+	1.	Brief introduction
+	2.	3-10 main points or topics, each summarized in 2-5 sentences:
+	•	Present the information with necessary details
+	•	Smoothly transition to its importance or actionable insight
+	•	Indicate if there is more detailed content available in the full email
+	3.	Action-based or advertisement content in a brief bullet point section
+	4.	Quick mention of any less critical but noteworthy items
 
 Example Output:
-"Welcome to Your Daily Email Digest for [current date]. Let's dive into what's important today.
+"Welcome to Your Daily Email Digest for July 31, 2024. Let's dive into what's important today.
 
-Apple has announced its new M3 chip, promising 40% faster performance. The rollout starts next month, according to TechCrunch. This might influence your decision if you're planning to upgrade your Mac soon.
+In financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they’ve hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
 
-In the markets, InvestDaily reports the S&P 500 is up 2.3% this week, with tech and healthcare leading the gains. Now might be a good time to review your portfolio allocation in these sectors.
+Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She’s now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
 
-An urgent reminder from HR: the annual team survey deadline is tomorrow at 5 PM. It's crucial for the upcoming planning session, so make sure to set aside 15 minutes today to complete it and ensure your voice is heard.
+Now, in tech and AI updates, Google’s Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD’s data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
 
-Briefly noted: Weather.com predicts rain for the weekend, so you might want to plan some indoor activities. Also, the office charity drive has reached the halfway mark at \$5,000. If you haven't contributed yet, there's still time to make an impact.
+An financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they’ve hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
 
-To wrap up, consider your tech upgrade plans, review your investments, and don't forget that team survey. Stay informed and proactive. That's all for today's digest."
+Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She’s now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
 
-Remember to maintain a professional yet engaging tone, focusing on delivering maximum value and actionable insights without explicitly labeling them.
+Now, in tech and AI updates, Google’s Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD’s data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
+
+That's it for today's digest. Stay informed and have a productive day!"
+
+Remember to maintain a professional yet engaging tone, focusing on delivering maximum value and actionable insights while indicating the availability of more detailed content when applicable.
+''';
+
+const String imagePrompt = '''
+### Instructions and Template for Image Generation
+
+Transcript: {Placeholder for transcript}
+
+### Step 1: Extract Variables from Transcript
+
+1. Read the Transcript: Analyze the provided information to identify the main topic or concept.
+2. Define Variables:
+   - Dark Color: The darker shade for the gradient.
+   - Light Color: The lighter shade for the gradient.
+   - Symbol: A single silhouette that represents the main topic.
+   - Note: You should not use the concept of Covid, copyrighted material, or any other sensitive concepts that might trigger the model not to generate an image. Also, don't generate a concept of AI, newspaper, newsletter, email, or podcast.
+
+### Step 2: Formulate the Prompt
+
+Use the extracted variables to create a clear and concise prompt for the image generation.
+
+### Prompt Template
+
+Create a clean, modern, and professional background image with a gradient from {dark_color} to {light_color}. In the center, place a single silhouette of a {symbol}. The design should be minimalistic, avoiding any text or logos.
+
+### Example Usage
+
+Given the provided podcast information, let's extract the variables:
+
+- Dark Color: Dark blue
+- Light Color: Light blue
+- Symbol: Rugby ball (representing the Olympics update)
+
+### Formulated Prompt
+
+Create a clean, modern, and professional background image with a gradient from dark blue to light blue. In the center, place a single silhouette of a rugby ball. The design should be minimalistic, avoiding any text or logos.
+''';
+
+const String podcastTitlePrompt = '''
+Generate a catchy and informative podcast title based on the following description and date range. The title should be concise, engaging, and reflect the main topics or themes of the podcast content.
+
+Description: {Placeholder for description}
+
+Date Range: {Placeholder for date range}
+
+Instructions:
+1. Analyze the description to identify the main topics or themes.
+2. Incorporate the date range into the title in a natural way.
+3. Keep the title under 10 words if possible.
+4. Make it catchy and intriguing to potential listeners.
+5. Avoid using generic phrases like "Your Daily Email Digest" unless it's particularly relevant.
+
+Now, generate a title based on the provided description and date range.
 ''';

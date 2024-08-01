@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Add this import for Clipboard
+import 'package:flutter/services.dart';
 import 'package:home/services/email_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:html/parser.dart' as htmlparser;
-import 'package:carousel_slider/carousel_slider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'package:home/prompt.dart';
 
 class EmailList extends StatefulWidget {
   final List<Map<String, dynamic>> emails;
@@ -21,18 +20,81 @@ class EmailList extends StatefulWidget {
 }
 
 class _EmailListState extends State<EmailList> {
-  Set<String> filteredPatterns = {};
-
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemCount: widget.emails.length,
-      separatorBuilder: (context, index) => Divider(height: 1),
-      itemBuilder: (context, index) {
-        final email = widget.emails[index];
-        return _buildEmailListItem(context, email);
-      },
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: _copyPromptToClipboard,
+          child: Text('Copy Prompt with Emails'),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: widget.emails.length,
+            itemBuilder: (context, index) {
+              final email = widget.emails[index];
+              return _buildEmailListItem(context, email);
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  Future<void> _copyPromptToClipboard() async {
+    final emailData = widget.emails.map((email) => {
+      'subject': email['subject'],
+      'sender': email['from'],
+      'body': _cleanEmailContent(email['body']),
+    }).toList();
+
+    final fullPrompt = efficientDailyEmailSummaryPrompt.replaceAll(
+      '{Placeholder for raw email data}',
+      jsonEncode(emailData)
+    );
+
+    try {
+      // Attempt to copy the entire prompt at once
+      await Clipboard.setData(ClipboardData(text: fullPrompt));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Full prompt copied to clipboard')),
+      );
+    } catch (e) {
+      print('Error copying to clipboard: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to copy full prompt. The data might be too large.')),
+      );
+    }
+  }
+
+  String _cleanEmailContent(String htmlContent) {
+    // Parse HTML content
+    final document = htmlparser.parse(htmlContent);
+    
+    // Extract text content
+    String textContent = document.body?.text ?? '';
+    
+    // Remove unnecessary whitespace and newlines
+    textContent = textContent.replaceAll(RegExp(r'\s+'), ' ').trim();
+    
+    // Remove common separator patterns
+    textContent = textContent.replaceAll(RegExp(r'[-—=_]{3,}'), '');
+    
+    // Remove URLs
+    textContent = textContent.replaceAll(RegExp(r'https?://\S+'), '');
+    
+    // Remove email addresses
+    textContent = textContent.replaceAll(RegExp(r'\S+@\S+'), '');
+    
+    // Remove any remaining special characters
+    textContent = textContent.replaceAll(RegExp(r'[^\w\s.,!?]'), '');
+    
+    // Truncate to a longer length (e.g., 2000 characters)
+    if (textContent.length > 2000) {
+      textContent = textContent.substring(0, 1997) + '...';
+    }
+    
+    return textContent;
   }
 
   Widget _buildEmailListItem(BuildContext context, Map<String, dynamic> email) {
@@ -69,208 +131,16 @@ class _EmailListState extends State<EmailList> {
                 ),
               ),
               SizedBox(height: 8),
-              _buildSimpleHtmlContent(context, email['body'] ?? 'No content'),
-              // Commented out image-related sections
-              // SizedBox(height: 16),
-              // if (email['images'] != null && (email['images'] as List).isNotEmpty)
-              //   Text(
-              //     'Images:',
-              //     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              //       fontWeight: FontWeight.bold,
-              //     ),
-              //   ),
-              // SizedBox(height: 8),
-              // _buildImageCarousel(context, email),
+              Text(
+                _cleanEmailContent(email['body'] ?? 'No content'),
+                style: Theme.of(context).textTheme.bodyMedium,
+                maxLines: 10,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSimpleHtmlContent(BuildContext context, String htmlContent) {
-    final document = htmlparser.parse(htmlContent);
-    final plainText = document.body?.text ?? 'No content';
-    return Text(
-      plainText.isNotEmpty ? plainText : 'No content available',
-      style: Theme.of(context).textTheme.bodyMedium,
-      maxLines: 10,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  Widget _buildImageCarousel(BuildContext context, Map<String, dynamic> email) {
-    final List<String> images = email['images'] as List<String>;
-    final List<String> filteredImages = images.where((url) => 
-      !filteredPatterns.any((pattern) => url.contains(pattern))
-    ).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CarouselSlider.builder(
-          itemCount: filteredImages.length,
-          options: CarouselOptions(
-            height: 200,
-            viewportFraction: 0.8,
-            enlargeCenterPage: true,
-            enableInfiniteScroll: false,
-          ),
-          itemBuilder: (context, index, realIndex) {
-            final imageUrl = filteredImages[index];
-            return Column(
-              children: [
-                Expanded(
-                  child: FutureBuilder<String>(
-                    future: widget.emailService.getProxyImageUrl(imageUrl),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return _buildPlaceholder();
-                      }
-                      if (snapshot.hasError || !snapshot.hasData) {
-                        return _buildErrorWidget();
-                      }
-                      final proxyUrl = snapshot.data!;
-                      return Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
-                            imageUrl: proxyUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => _buildPlaceholder(),
-                            errorWidget: (context, url, error) {
-                              print('Error loading image: $url, Error: $error');
-                              return _buildErrorWidget();
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => _showUrlOptions(context, imageUrl),
-                  child: Text(
-                    imageUrl,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      decoration: TextDecoration.underline,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () => _showFilterDialog(context),
-          child: Text('Filter Images'),
-        ),
-      ],
-    );
-  }
-
-  void _showUrlOptions(BuildContext context, String url) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.content_copy),
-                title: Text('Copy URL'),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: url));
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('URL copied to clipboard')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.open_in_browser),
-                title: Text('Open in browser'),
-                onTap: () async {
-                  final Uri uri = Uri.parse(url);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not open URL')),
-                    );
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showFilterDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        String filterPattern = '';
-        return AlertDialog(
-          title: Text('Filter Images'),
-          content: TextField(
-            onChanged: (value) => filterPattern = value,
-            decoration: InputDecoration(
-              hintText: 'Enter URL pattern to filter',
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: Text('Apply'),
-              onPressed: () {
-                setState(() {
-                  filteredPatterns.add(filterPattern);
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Container(
-      color: Colors.grey[300],
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error, color: Colors.red),
-          SizedBox(height: 4),
-          Text(
-            'Error',
-            style: TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -7,3 +7,4 @@ python-dotenv
 elevenlabs
 python-dotenv
 openai
+typing_extensions

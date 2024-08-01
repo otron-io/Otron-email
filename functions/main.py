@@ -63,6 +63,35 @@ import sys
 import xml.dom.minidom as minidom
 import traceback
 import re
+import openai
+from openai import OpenAI
+import base64
+import uuid
+
+import sys
+import os
+
+print(f"Python version: {sys.version}")
+print(f"Python executable: {sys.executable}")
+print(f"Python path: {sys.path}")
+print(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
+print(f"Current working directory: {os.getcwd()}")
+
+try:
+    import openai
+    print(f"OpenAI imported successfully. Version: {openai.__version__}")
+    print(f"OpenAI path: {openai.__file__}")
+except ImportError as e:
+    print(f"Failed to import OpenAI: {e}")
+    print("Installed packages:")
+    import subprocess
+    result = subprocess.run([sys.executable, "-m", "pip", "list"], capture_output=True, text=True)
+    print(result.stdout)
+
+# Rest of your imports and code...
+
+# Initialize the OpenAI client
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 initialize_app()
 
@@ -119,10 +148,17 @@ def TTS(request: Request) -> Response:
         try:
             data = request.get_json()
             text = data.get('text', '')
+            service = data.get('service', 'elevenlabs')  # Default to ElevenLabs if not specified
             if not text:
                 return Response(json.dumps({'error': 'Text is required'}), status=400)
 
-            audio_stream = text_to_speech_stream(text)
+            if service == 'elevenlabs':
+                audio_stream = text_to_speech_stream(text)
+            elif service == 'openai':
+                audio_stream = openai_text_to_speech_stream(text)
+            else:
+                return Response(json.dumps({'error': 'Invalid service specified'}), status=400)
+
             def generate():
                 while True:
                     chunk = audio_stream.read(1024)
@@ -135,6 +171,26 @@ def TTS(request: Request) -> Response:
             return Response(json.dumps({'error': str(e)}), status=500)
 
     return Response("Method not allowed", status=405)
+
+def openai_text_to_speech_stream(text: str) -> IO[bytes]:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=text,
+    )
+    
+    # Create a BytesIO object to hold the audio data in memory
+    audio_stream = BytesIO()
+    
+    # Stream the response to the BytesIO object
+    for chunk in response.iter_bytes():
+        audio_stream.write(chunk)
+    
+    # Reset stream position to the beginning
+    audio_stream.seek(0)
+    
+    return audio_stream
 
 @https_fn.on_request(
     cors=options.CorsOptions(
@@ -355,3 +411,60 @@ def update_rss_feed(request: Request) -> Response:
             return Response(json.dumps({'error': error_message, 'traceback': traceback.format_exc()}), status=500, headers=headers)
 
     return Response("Method not allowed", status=405, headers=headers)
+
+@https_fn.on_request(
+    cors=options.CorsOptions(
+        cors_origins="*",
+        cors_methods=["POST", "OPTIONS"]
+    )
+)
+def generate_image(request: Request) -> Response:
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = Response(json.dumps({'message': 'CORS preflight'}), status=200)
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            prompt = data.get('prompt')
+
+            if not prompt:
+                return Response(json.dumps({'error': 'Prompt is required'}), status=400)
+
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                n=1,
+                size="1024x1024",
+                response_format="b64_json"
+            )
+
+            # Extract base64 image data from the response
+            image_data = base64.b64decode(response.data[0].b64_json)
+
+            # Upload the image to Firebase Storage
+            bucket = storage.bucket()
+            blob_name = f"web_assets/podcast_images/{uuid.uuid4()}.png"
+            blob = bucket.blob(blob_name)
+            blob.upload_from_string(image_data, content_type='image/png')
+
+            # Make the blob publicly accessible
+            blob.make_public()
+
+            # Get the public URL
+            firebase_image_url = blob.public_url
+
+            return Response(json.dumps({'image_url': firebase_image_url}), status=200)
+        except Exception as e:
+            error_message = f"Error generating image: {str(e)}"
+            print(error_message)
+            print("Traceback:")
+            print(traceback.format_exc())
+            return Response(json.dumps({'error': error_message, 'traceback': traceback.format_exc()}), status=500)
+
+    return Response("Method not allowed", status=405)
