@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 
 //--CLASS--
 class WelcomePage extends StatefulWidget {
@@ -14,40 +15,38 @@ class WelcomePage extends StatefulWidget {
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  String? _imageUrl;
-  bool _isGeneratingImage = false;
+  AudioPlayer audioPlayer = AudioPlayer();
+  bool _isGeneratingAudio = false;
 
-  Future<void> _generateImage() async {
+  Future<void> _generateAudio() async {
     setState(() {
-      _isGeneratingImage = true;
+      _isGeneratingAudio = true;
     });
 
     try {
       final response = await http.post(
-        Uri.parse('https://generate-image-2ghwz42v7q-uc.a.run.app'),
+        Uri.parse('https://tts-2ghwz42v7q-uc.a.run.app'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'prompt': 'Generate an image of a podcast'}),
+        body: json.encode({
+          'text': 'Welcome to your personal podcast creator. Let\'s transform your favorite content into audio!',
+          'service': 'openai'
+        }),
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        String originalImageUrl = responseData['image_url'];
-        
-        // Use the proxy_image function to get a proxied URL
-        setState(() {
-          _imageUrl = 'https://proxy-image-2ghwz42v7q-uc.a.run.app?url=${Uri.encodeComponent(originalImageUrl)}';
-        });
+        // Play the audio
+        await audioPlayer.play(BytesSource(response.bodyBytes));
       } else {
-        throw Exception('Failed to generate image');
+        throw Exception('Failed to generate audio');
       }
     } catch (e) {
-      print('Error generating image: $e');
+      print('Error generating audio: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate image: ${e.toString()}')),
+        SnackBar(content: Text('Failed to generate audio: ${e.toString()}')),
       );
     } finally {
       setState(() {
-        _isGeneratingImage = false;
+        _isGeneratingAudio = false;
       });
     }
   }
@@ -87,36 +86,15 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _isGeneratingImage ? null : _generateImage,
-                    child: Text('Generate Image'),
+                    onPressed: _isGeneratingAudio ? null : _generateAudio,
+                    child: Text('Generate Audio'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(200, 50),
                     ),
                   ),
                   SizedBox(height: 16),
-                  if (_isGeneratingImage)
-                    CircularProgressIndicator()
-                  else if (_imageUrl != null)
-                    Image.network(
-                      _imageUrl!,
-                      height: 200,
-                      width: 200,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        print('Error loading image: $error');
-                        return Text('Failed to load image');
-                      },
-                    ),
+                  if (_isGeneratingAudio)
+                    CircularProgressIndicator(),
                 ],
               ),
             ),
@@ -124,5 +102,11 @@ class _WelcomePageState extends State<WelcomePage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    audioPlayer.dispose();
+    super.dispose();
   }
 }

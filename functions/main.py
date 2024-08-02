@@ -168,29 +168,36 @@ def TTS(request: Request) -> Response:
 
             return Response(generate(), status=200, mimetype='audio/mpeg', direct_passthrough=True)
         except Exception as e:
-            return Response(json.dumps({'error': str(e)}), status=500)
+            error_message = str(e)
+            print(f"Error in TTS: {error_message}")  # Log the error
+            return Response(json.dumps({'error': error_message}), status=500)
 
-    return Response("Method not allowed", status=405)
+    return Response(json.dumps({'error': "Method not allowed"}), status=405)
 
 def openai_text_to_speech_stream(text: str) -> IO[bytes]:
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    response = client.audio.speech.create(
-        model="tts-1",
-        voice="alloy",
-        input=text,
-    )
-    
-    # Create a BytesIO object to hold the audio data in memory
-    audio_stream = BytesIO()
-    
-    # Stream the response to the BytesIO object
-    for chunk in response.iter_bytes():
-        audio_stream.write(chunk)
-    
-    # Reset stream position to the beginning
-    audio_stream.seek(0)
-    
-    return audio_stream
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text,
+        )
+        
+        # Create a BytesIO object to hold the audio data in memory
+        audio_stream = BytesIO()
+        
+        # Stream the response to the BytesIO object
+        for chunk in response.iter_bytes():
+            audio_stream.write(chunk)
+        
+        # Reset stream position to the beginning
+        audio_stream.seek(0)
+        
+        return audio_stream
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error in openai_text_to_speech_stream: {error_message}")  # Log the error
+        raise Exception(f"OpenAI TTS error: {error_message}")
 
 @https_fn.on_request(
     cors=options.CorsOptions(

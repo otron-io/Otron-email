@@ -5,6 +5,7 @@ class NewsletterSelectionWidget extends StatefulWidget {
   final List<String> selectedNewsletters;
   final ValueChanged<List<String>> onChanged;
   final ValueChanged<DateTimeRange?> onDateRangeChanged;
+  final ValueChanged<String?> onToEmailChanged;
 
   const NewsletterSelectionWidget({
     Key? key,
@@ -12,6 +13,7 @@ class NewsletterSelectionWidget extends StatefulWidget {
     required this.selectedNewsletters,
     required this.onChanged,
     required this.onDateRangeChanged,
+    required this.onToEmailChanged,
   }) : super(key: key);
 
   @override
@@ -25,6 +27,7 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
   String _customItem = '';
   String _selectedDateOption = 'Last 7 days';
   DateTimeRange? _customDateRange;
+  late TextEditingController _toEmailController;
 
   @override
   void initState() {
@@ -32,11 +35,13 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
     _selectedItems = List.from(widget.selectedNewsletters);
     _searchController = TextEditingController();
     _filteredItems = widget.availableNewsletters;
+    _toEmailController = TextEditingController();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _toEmailController.dispose();
     super.dispose();
   }
 
@@ -201,6 +206,22 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
                 ? 'Select Custom Range'
                 : '${_customDateRange!.start.toLocal().toString().split(' ')[0]} - ${_customDateRange!.end.toLocal().toString().split(' ')[0]}'),
           ),
+        const SizedBox(height: 16),
+        Text(
+          'Filter by "To" Email',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _toEmailController,
+          decoration: InputDecoration(
+            hintText: 'e.g., podcast+arnoldas@otrion.io',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onChanged: widget.onToEmailChanged,
+        ),
         const SizedBox(height: 16),
         Text(
           'Selected Items',

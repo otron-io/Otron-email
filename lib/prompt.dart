@@ -1,3 +1,5 @@
+
+//--PROMPTS--
 const String emailSummaryPrompt = '''
 Please read all of these emails: {Placeholder for raw email data}
 
@@ -14,6 +16,8 @@ Please summarize the email newsletters for the past week into a spoken language 
 
 Ensure the language is clear and natural for audio playback, as if reading aloud to a listener. Narrate the output in the style and tone of the newsletter itself, using specific phrases and maintaining the original style. Start with an engaging introduction to set the stage for the podcast. Please add snarky/observant commentary reviewing the content yourself.
 View the emails from the same sender as a holistic picture and notice any connections or storylines between them.
+
+Answer in the {language} only.
 
 Example Input:
 {
@@ -48,6 +52,8 @@ Instructions:
 Review all the content of the emails and extract any relevant URLs. Emails will have lots of unnecessary URLs for content in the email and other gimmicks, but we only want a list of URLs that were meant as calls to action. You should also return a clear indication of what the link is about, like:
 
 RSVP to event: www.rsvpweb.com/event/123
+
+Answer in the {language} only.
 
 Example Input:
 {
@@ -114,6 +120,8 @@ Create a concise, efficient daily podcast script summarizing the key information
 	8.	Use natural, conversational transitions to connect information.
 	9.	Indicate if there is more detailed content available in the full email or through provided links.
 
+Answer in the {language} only.
+
 Structure:
 
 	1.	Brief introduction
@@ -127,17 +135,17 @@ Structure:
 Example Output:
 "Welcome to Your Daily Email Digest for July 31, 2024. Let's dive into what's important today.
 
-In financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they’ve hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
+In financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they've hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
 
-Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She’s now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
+Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She's now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
 
-Now, in tech and AI updates, Google’s Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD’s data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
+Now, in tech and AI updates, Google's Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD's data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
 
-An financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they’ve hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
+An financial news, The New York Times reports that the Federal Reserve has decided to keep interest rates unchanged for now. However, they've hinted at possible rate cuts on the horizon. This could have major impacts on borrowers and investors, so keep an eye out for future announcements and think about how it might affect your financial plans. You can find more details in the full email.
 
-Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She’s now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
+Moving on to politics and elections, breaking news from The New York Times: Kari Lake has won the Senate primary in Arizona. She's now set for a high-stakes race against Democrat Ruben Gallego. This is definitely an election to watch closely. Further details and context are available in the full email.
 
-Now, in tech and AI updates, Google’s Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD’s data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
+Now, in tech and AI updates, Google's Project IDX is getting some big enhancements. It now includes in-browser support for React Native, AI tools for generating comments and tests, new database templates, and soon, Android Studio will be available in-browser. This could really change the game for app development. Meanwhile, AMD's data center revenue has doubled, driven by AI chip sales, signaling a booming demand for AI solutions. This trend could have significant implications for the tech industry.
 
 That's it for today's digest. Stay informed and have a productive day!"
 
@@ -189,9 +197,21 @@ Date Range: {Placeholder for date range}
 Instructions:
 1. Analyze the description to identify the main topics or themes.
 2. Incorporate the date range into the title in a natural way.
-3. Keep the title under 10 words if possible.
+3. Keep the title under 10 words.
 4. Make it catchy and intriguing to potential listeners.
 5. Avoid using generic phrases like "Your Daily Email Digest" unless it's particularly relevant.
+6. Return ONLY the title, without any explanations or additional text.
 
-Now, generate a title based on the provided description and date range.
+Answer in the {language} only.
+
+Good Examples:
+1. "Tech Titans Clash: AI Revolution (May 15-21, 2023)"
+2. "Green Energy Breakthrough: June 7, 2023 Roundup"
+3. "Global Markets Rollercoaster: July 1-7, 2023 Recap"
+
+Bad Examples:
+1. "Your Daily Email Digest for August 10, 2023" (too generic)
+2. "Exploring Various Topics and News from September 1-7, 2023 Including Technology, Politics, and Economics with In-Depth Analysis and Commentary" (too long and wordy)
+
+Generate a title based on the provided description and date range.
 ''';

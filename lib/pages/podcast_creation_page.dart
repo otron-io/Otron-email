@@ -37,7 +37,7 @@ class PodcastCreationPage extends StatefulWidget {
 // --PODCAST CREATION PAGE STATE CLASS--
 class _PodcastCreationPageState extends State<PodcastCreationPage> {
   final EmailService _emailService = EmailService();
-  final VertexAIService _vertexAIService = VertexAIService();
+  late final VertexAIService _vertexAIService;
   int _currentStep = 0;
   bool _isLoading = false;
   String _loadingMessage = '';
@@ -51,10 +51,13 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   bool _isSignedIn = false;
   bool _useSampleData = false;
   DateTimeRange? _selectedDateRange;
+  String _selectedLanguage = 'English'; // Default language
+  String? _toEmail;
 
   @override
   void initState() {
     super.initState();
+    _vertexAIService = VertexAIService(language: _selectedLanguage);
     _loadAvailableNewsletters();
   }
 
@@ -72,6 +75,23 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
       appBar: AppBar(
         title: const Text('Schedule Weekly Podcast'),
         centerTitle: true,
+        actions: [
+          DropdownButton<String>(
+            value: _selectedLanguage,
+            items: <String>['Lithuanian', 'English', 'Spanish'] // Add more languages as needed
+                .map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                _changeLanguage(newValue);
+              }
+            },
+          ),
+        ],
       ),
       body: _isLoading
         ? Center(
@@ -176,6 +196,11 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                 _selectedDateRange = null;
               });
             }
+          },
+          onToEmailChanged: (String? toEmail) {
+            setState(() {
+              _toEmail = toEmail;
+            });
           },
         ),
       ],
@@ -386,6 +411,7 @@ The Gourmet Gazette Team
       final fetchedEmails = await _emailService.fetchEmails(
         newsletters, 
         _selectedDateRange,
+        _toEmail,
         (progress) {
           setState(() {
             _loadingMessage = 'Fetching emails ($progress/500)...';
@@ -440,25 +466,39 @@ The Gourmet Gazette Team
 
     try {
       final fullPrompt = await _prepareEmailData();
-      final generatedDescription = await _generateDescription(fullPrompt);
+      final generatedDescription = await _vertexAIService.generateContent(fullPrompt);
       final urls = _extractUrls(_fetchedEmails);
-      final generatedSummary = await _generateSummary(generatedDescription, urls);
-      final generatedTitle = await _generateTitle(generatedDescription);
+      final generatedSummary = await _vertexAIService.generateSummary(generatedDescription, urls);
+
+      // Generate the dateRangeString
+      String dateRangeString = '';
+      if (_selectedDateRange != null) {
+        final startDate = DateFormat('MMMM d, yyyy').format(_selectedDateRange!.start);
+        final endDate = DateFormat('MMMM d, yyyy').format(_selectedDateRange!.end);
+        dateRangeString = '$startDate - $endDate';
+      } else {
+        dateRangeString = DateFormat('MMMM d, yyyy').format(DateTime.now());
+      }
+
+      final generatedTitle = await _vertexAIService.generatePodcastTitle(generatedDescription, dateRangeString);
 
       // Generate image
-      final imagePrompt = await _generateImagePrompt(generatedDescription);
+      final imagePrompt = await _vertexAIService.generateImagePrompt(generatedDescription);
       final imageUrl = await _generateImage(imagePrompt);
 
       setState(() {
         _loadingMessage = 'Preparing audio...';
       });
 
-      // Generate audio (use the full content for the efficient version)
-      final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app'; // Updated TTS URL
+      // Generate audio
+      final String apiUrl = 'https://tts-2ghwz42v7q-uc.a.run.app';
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'text': generatedDescription}),
+        body: json.encode({
+          'text': generatedDescription,
+          'service': 'openai'
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -483,7 +523,7 @@ The Gourmet Gazette Team
               'audioFileName': fileName,
               'createdAt': DateTime.now().toIso8601String(),
               'urls': urls.join(', '),
-              'imageUrl': imageUrl, // Add the image URL to the podcast data
+              'imageUrl': imageUrl,
             };
             _isLoading = false;
           }
@@ -535,37 +575,12 @@ The Gourmet Gazette Team
       .replaceAll('[current date]', dateRangeString);
   }
 
-  Future<String> _generateDescription(String fullPrompt) async {
-    return await _vertexAIService.generateContent(fullPrompt);
-  }
-
   List<String> _extractUrls(List<Map<String, dynamic>> emailData) {
     return emailData
       .map((email) => email['url'] as String?)
       .where((url) => url != null && url.isNotEmpty)
       .cast<String>()
       .toList();
-  }
-
-  Future<String> _generateSummary(String description, List<String> urls) async {
-    return await _vertexAIService.generateSummary(description, urls);
-  }
-
-  Future<String> _generateTitle(String description) async {
-    String dateRangeString = '';
-    if (_selectedDateRange != null) {
-      final startDate = DateFormat('MMM d').format(_selectedDateRange!.start);
-      final endDate = DateFormat('MMM d, yyyy').format(_selectedDateRange!.end);
-      dateRangeString = '$startDate - $endDate';
-    } else {
-      dateRangeString = DateFormat('MMMM d, yyyy').format(DateTime.now());
-    }
-    return await _vertexAIService.generatePodcastTitle(description, dateRangeString);
-  }
-
-  Future<String> _generateImagePrompt(String description) async {
-    // Use the VertexAI service to generate an image prompt based on the podcast description
-    return await _vertexAIService.generateImagePrompt(description);
   }
 
   Future<String> _generateImage(String prompt) async {
@@ -598,6 +613,7 @@ The Gourmet Gazette Team
       podcastData: prefilledPodcastData,
       onSchedule: _updateRssFeed,
       selectedDateRange: _selectedDateRange,
+      language: _selectedLanguage,
     );
   }
 
@@ -683,6 +699,14 @@ The Gourmet Gazette Team
   int _getDayNumber(String day) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     return days.indexOf(day) + 1;
+  }
+
+  void _changeLanguage(String newLanguage) {
+    setState(() {
+      _selectedLanguage = newLanguage;
+      _vertexAIService = VertexAIService(language: _selectedLanguage);
+    });
+    // You might want to regenerate content or update other language-dependent components here
   }
 }
 

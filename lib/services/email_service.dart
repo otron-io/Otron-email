@@ -41,7 +41,7 @@ class EmailService {
   }
 
   // --FETCH EMAILS METHOD--
-  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange, Function(int) updateProgress) async {
+  Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange, String? toEmail, Function(int) updateProgress) async {
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signInSilently();
       if (account == null) {
@@ -68,6 +68,7 @@ class EmailService {
       
       String domainQuery = _buildDomainQuery(domains);
       String dateQuery = _buildDateQuery(dateRange);
+      String toEmailQuery = _buildToEmailQuery(toEmail);
 
       final emailDetails = <Map<String, dynamic>>[];
       String? pageToken;
@@ -75,7 +76,7 @@ class EmailService {
       do {
         final ListMessagesResponse response = await gmailApi.users.messages.list(
           'me',
-          q: domainQuery.isEmpty ? dateQuery.trim() : '($domainQuery)$dateQuery',
+          q: '${domainQuery.isEmpty ? '' : '($domainQuery)'}${dateQuery.trim()}${toEmailQuery.trim()}',
           maxResults: 100,
           pageToken: pageToken,
         );
@@ -136,6 +137,11 @@ class EmailService {
     final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
     final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
     return ' after:$startDate before:$endDate';
+  }
+
+  String _buildToEmailQuery(String? toEmail) {
+    if (toEmail == null || toEmail.isEmpty) return '';
+    return ' to:$toEmail';
   }
 
   // --PARSE MESSAGE METHOD--

@@ -17,13 +17,15 @@ const String PROXY_UPLOAD_URL = 'https://proxy-upload-2ghwz42v7q-uc.a.run.app';
 class SchedulePodcastWidget extends StatefulWidget {
   final Map<String, dynamic> podcastData;
   final Function(String, Map<String, dynamic>) onSchedule;
-  final DateTimeRange? selectedDateRange; // Add this line
+  final DateTimeRange? selectedDateRange;
+  final String language; // Add this line
 
   const SchedulePodcastWidget({
     Key? key,
     required this.podcastData,
     required this.onSchedule,
-    this.selectedDateRange, // Add this line
+    this.selectedDateRange,
+    required this.language, // Add this line
   }) : super(key: key);
 
   @override
@@ -47,11 +49,12 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
   bool _isUploadingImage = false;
   bool _isGeneratingImage = false;
 
-  final VertexAIService _vertexAIService = VertexAIService();
+  late final VertexAIService _vertexAIService;
 
   @override
   void initState() {
     super.initState();
+    _vertexAIService = VertexAIService(language: widget.language);
     _loadRssFeeds();
     _populateFields();
 
