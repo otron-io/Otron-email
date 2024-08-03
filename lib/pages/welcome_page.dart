@@ -5,51 +5,10 @@ import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 
 //--CLASS--
-class WelcomePage extends StatefulWidget {
+class WelcomePage extends StatelessWidget {
   final VoidCallback onGetStarted;
 
   const WelcomePage({Key? key, required this.onGetStarted}) : super(key: key);
-
-  @override
-  _WelcomePageState createState() => _WelcomePageState();
-}
-
-class _WelcomePageState extends State<WelcomePage> {
-  AudioPlayer audioPlayer = AudioPlayer();
-  bool _isGeneratingAudio = false;
-
-  Future<void> _generateAudio() async {
-    setState(() {
-      _isGeneratingAudio = true;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://tts-2ghwz42v7q-uc.a.run.app'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'text': 'Welcome to your personal podcast creator. Let\'s transform your favorite content into audio!',
-          'service': 'openai'
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        // Play the audio
-        await audioPlayer.play(BytesSource(response.bodyBytes));
-      } else {
-        throw Exception('Failed to generate audio');
-      }
-    } catch (e) {
-      print('Error generating audio: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate audio: ${e.toString()}')),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingAudio = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,23 +37,12 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: widget.onGetStarted,
+                    onPressed: onGetStarted,
                     child: Text('View My Podcasts'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(200, 50),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _isGeneratingAudio ? null : _generateAudio,
-                    child: Text('Generate Audio'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(200, 50),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  if (_isGeneratingAudio)
-                    CircularProgressIndicator(),
                 ],
               ),
             ),
@@ -102,11 +50,5 @@ class _WelcomePageState extends State<WelcomePage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    audioPlayer.dispose();
-    super.dispose();
   }
 }
