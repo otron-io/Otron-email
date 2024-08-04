@@ -26,6 +26,7 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
   List<String> _rssFeedFiles = [];
   String? _selectedRssFeed;
   bool _isLoading = false;
+  bool _mounted = true;
 
   final _titleController = TextEditingController();
   final _authorController = TextEditingController();
@@ -42,9 +43,24 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
     _populateFields();
   }
 
+  @override
+  void dispose() {
+    _mounted = false;
+    _titleController.dispose();
+    _authorController.dispose();
+    _subtitleController.dispose();
+    _summaryController.dispose();
+    _descriptionController.dispose();
+    _audioUrlController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadRssFeeds() async {
+    if (!_mounted) return;
     try {
       final feeds = await StorageUtils.getRssFeedFiles();
+      if (!_mounted) return;
       setState(() {
         _rssFeedFiles = feeds;
         _selectedRssFeed = feeds.contains('personal_podcast_feed.xml') 
@@ -67,6 +83,7 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
   }
 
   Future<void> _schedulePodcast() async {
+    if (!_mounted) return;
     if (_selectedRssFeed == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select an RSS feed')),
@@ -104,6 +121,7 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
         throw Exception('Failed to update RSS feed: ${updateResponse.statusCode}');
       }
 
+      if (!_mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('RSS feed updated successfully!')),
       );
@@ -112,10 +130,12 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
 
     } catch (e) {
       print('Error scheduling podcast: $e');
+      if (!_mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to schedule podcast: ${e.toString()}')),
       );
     } finally {
+      if (!_mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -184,17 +204,5 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _authorController.dispose();
-    _subtitleController.dispose();
-    _summaryController.dispose();
-    _descriptionController.dispose();
-    _audioUrlController.dispose();
-    _durationController.dispose();
-    super.dispose();
   }
 }

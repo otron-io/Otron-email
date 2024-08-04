@@ -5,7 +5,7 @@ import 'package:html/parser.dart' as htmlparser;
 import 'dart:convert';
 import 'package:home/prompt.dart';
 
-class EmailList extends StatefulWidget {
+class EmailList extends StatelessWidget {
   final List<Map<String, dynamic>> emails;
   final EmailService emailService;
 
@@ -16,23 +16,18 @@ class EmailList extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _EmailListState createState() => _EmailListState();
-}
-
-class _EmailListState extends State<EmailList> {
-  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         ElevatedButton(
-          onPressed: _copyPromptToClipboard,
+          onPressed: () => _copyPromptToClipboard(context),
           child: Text('Copy Prompt with Emails'),
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: widget.emails.length,
+            itemCount: emails.length,
             itemBuilder: (context, index) {
-              final email = widget.emails[index];
+              final email = emails[index];
               return _buildEmailListItem(context, email);
             },
           ),
@@ -41,8 +36,8 @@ class _EmailListState extends State<EmailList> {
     );
   }
 
-  Future<void> _copyPromptToClipboard() async {
-    final emailData = widget.emails.map((email) => {
+  Future<void> _copyPromptToClipboard(BuildContext context) async {
+    final emailData = emails.map((email) => {
       'subject': email['subject'],
       'sender': email['from'],
       'body': _cleanEmailContent(email['body']),

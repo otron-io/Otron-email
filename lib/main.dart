@@ -1,6 +1,7 @@
 // --IMPORTS--
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart'; // Add this import
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'firebase_options.dart';
@@ -66,11 +67,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildApp();
-  }
-
-  Widget _buildApp() {
     return MaterialApp(
+      scrollBehavior: MyCustomScrollBehavior(),
       title: 'Otron Email',
       theme: appTheme,
       home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
@@ -81,6 +79,14 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _podcasts.insert(0, newPodcast);
     });
+  }
+}
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(
+      BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
   }
 }
 

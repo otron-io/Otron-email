@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+  <channel>
+    <title>Otron Email - Your Personalized Podcast</title>
+    <link>https://email.otron.io</link>
+    <language>en-us</language>
+    <copyright>Copyright 2024 Otron Email Inc.</copyright>
+    <itunes:subtitle>Your newsletters, now in podcast form</itunes:subtitle>
+    <itunes:author>Otron Email</itunes:author>
+    <itunes:summary>Otron Email transforms your email newsletters into a personalized podcast feed. Stay updated with your favorite content, hands-free.</itunes:summary>
+    <description>Otron Email transforms your email newsletters into a personalized podcast feed. Stay updated with your favorite content, hands-free. Your inbox, now in audio.</description>
+    <itunes:owner>
+      <itunes:name>Otron Email</itunes:name>
+      <itunes:email>arnoldas@otron.io</itunes:email>
+    </itunes:owner>
+    <itunes:image href="https://firebasestorage.googleapis.com/v0/b/otron-email-426615.appspot.com/o/web_assets%2F2fd1bc52-213a-4e38-8b24-3dc4ccf67fc6.png?alt=media&amp;token=2a14d7ea-fff7-4722-b220-7bd890602373"/>
+    <itunes:category text="News"/>
+    <itunes:category text="Technology"/>
+    <pubDate>[RFC 2822 Date Format]</pubDate>
+    <lastBuildDate>[RFC 2822 Date Format]</lastBuildDate>
+    <itunes:explicit>false</itunes:explicit>
+    <itunes:type>episodic</itunes:type>
+    <itunes:keywords>email,newsletter,podcast,news,technology</itunes:keywords>
+    <itunes:block>no</itunes:block>
+    <image>
+      <url>https://firebasestorage.googleapis.com/v0/b/otron-email-426615.appspot.com/o/web_assets%2F2fd1bc52-213a-4e38-8b24-3dc4ccf67fc6.png?alt=media&amp;token=2a14d7ea-fff7-4722-b220-7bd890602373</url>
+      <title>Otron Email - Your Personalized Podcast</title>
+      <link>https://email.otron.io</link>
+    </image>
+
+    <item>
+      <title>[Episode Title]</title>
+      <itunes:author>Otron Daily</itunes:author>
+      <itunes:subtitle>[Episode Date]</itunes:subtitle>
+      <itunes:summary>[Brief Episode Summary]</itunes:summary>
+      <description>[Detailed Episode Description]</description>
+      <pubDate>[RFC 2822 Date Format]</pubDate>
+      <itunes:duration></itunes:duration>
+      <enclosure url="[Audio File URL]" type="audio/mpeg" length="0"/>
+      <guid>[Audio File URL]</guid>
+      <language>en-us</language>
+      <itunes:image href="[Episode-specific Image URL (if applicable)]"/>
+    </item>
+
+  </channel>
+</rss>

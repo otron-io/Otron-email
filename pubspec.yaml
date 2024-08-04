@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
 
   google_sign_in: ^6.2.1
   google_sign_in_web: ^0.12.4+1
@@ -54,6 +56,8 @@ dependencies:
   crypto: ^3.0.2
   permission_handler: ^10.0.0
 
+  # Add these new dependencies
+  universal_html: ^2.2.4
 
 dev_dependencies:
   flutter_test:

@@ -110,6 +110,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: 600),
                 child: Stepper(
+                  physics: ClampingScrollPhysics(),
                   type: StepperType.vertical,
                   currentStep: _currentStep,
                   onStepContinue: () async {
@@ -135,6 +136,27 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                       });
                     }
                   },
+                  controlsBuilder: (BuildContext context, ControlsDetails details) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Row(
+                        children: <Widget>[
+                          ElevatedButton(
+                            onPressed: details.onStepContinue,
+                            child: Text(_currentStep == 3 ? 'Finish' : 'Continue'),
+                          ),
+                          if (_currentStep > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: TextButton(
+                                onPressed: details.onStepCancel,
+                                child: const Text('Back'),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
                   steps: [
                     Step(
                       title: const Text('Select Newsletters'),
@@ -144,10 +166,7 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
                     ),
                     Step(
                       title: const Text('Review Emails'),
-                      content: SizedBox(
-                        height: 400,
-                        child: _buildEmailReview(),
-                      ),
+                      content: _buildEmailReview(),
                       isActive: _currentStep >= 1,
                       state: _currentStep > 1 ? StepState.complete : StepState.indexed,
                     ),
@@ -172,38 +191,33 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   }
 
   Widget _buildNewsletterSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        NewsletterSelectionWidget(
-          availableNewsletters: _availableNewsletters,
-          selectedNewsletters: _selectedNewsletters,
-          onChanged: (List<String> selectedItems) {
-            setState(() {
-              _selectedNewsletters = selectedItems;
-            });
-          },
-          onDateRangeChanged: (DateTimeRange? dateRange) {
-            if (dateRange != null) {
-              // Ensure the time is set to the start and end of the day in local time
-              final start = DateTime(dateRange.start.year, dateRange.start.month, dateRange.start.day);
-              final end = DateTime(dateRange.end.year, dateRange.end.month, dateRange.end.day, 23, 59, 59);
-              setState(() {
-                _selectedDateRange = DateTimeRange(start: start, end: end);
-              });
-            } else {
-              setState(() {
-                _selectedDateRange = null;
-              });
-            }
-          },
-          onToEmailChanged: (String? toEmail) {
-            setState(() {
-              _toEmail = toEmail;
-            });
-          },
-        ),
-      ],
+    return NewsletterSelectionWidget(
+      availableNewsletters: _availableNewsletters,
+      selectedNewsletters: _selectedNewsletters,
+      onChanged: (List<String> selectedItems) {
+        setState(() {
+          _selectedNewsletters = selectedItems;
+        });
+      },
+      onDateRangeChanged: (DateTimeRange? dateRange) {
+        if (dateRange != null) {
+          // Ensure the time is set to the start and end of the day in local time
+          final start = DateTime(dateRange.start.year, dateRange.start.month, dateRange.start.day);
+          final end = DateTime(dateRange.end.year, dateRange.end.month, dateRange.end.day, 23, 59, 59);
+          setState(() {
+            _selectedDateRange = DateTimeRange(start: start, end: end);
+          });
+        } else {
+          setState(() {
+            _selectedDateRange = null;
+          });
+        }
+      },
+      onToEmailChanged: (String? toEmail) {
+        setState(() {
+          _toEmail = toEmail;
+        });
+      },
     );
   }
 
@@ -422,6 +436,8 @@ The Gourmet Gazette Team
         _fetchedEmails = fetchedEmails ?? [];
         _isLoading = false;
       });
+
+      print('Fetched ${_fetchedEmails.length} emails'); // Add this line for debugging
     } catch (e) {
       print('Error fetching emails: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -435,11 +451,14 @@ The Gourmet Gazette Team
   }
 
   Widget _buildEmailReview() {
-    return EmailReviewWidget(
-      isLoading: _isLoading,
-      fetchedEmails: _fetchedEmails,
-      onFetchEmails: _fetchEmails,
-      emailService: _emailService,
+    return SizedBox(
+      height: 400,
+      child: _fetchedEmails.isEmpty
+        ? Center(child: Text('No emails fetched. Please try again.'))
+        : EmailList(
+            emails: _fetchedEmails,
+            emailService: _emailService,
+          ),
     );
   }
 

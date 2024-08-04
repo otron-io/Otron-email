@@ -28,55 +28,61 @@ class GenerateSampleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Column(
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(loadingMessage),
-        ],
-      );
-    } else if (generatedPodcast != null) {
-      return Column(
+    return SingleChildScrollView(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            generatedPodcast!['title'] ?? 'No Title',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          SizedBox(height: 8),
-          Text(
-            generatedPodcast!['subtitle'] ?? 'No Subtitle',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          SizedBox(height: 16),
-          if (generatedPodcast!['audioData'] != null)
-            AudioPlayerWidget(
-              audioData: generatedPodcast!['audioData'],
-              onPlayPressed: _logPlayedSampleEvent,
-            ),
-          SizedBox(height: 16),
-          Text(
-            'Summary:',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          SelectableText(
-            generatedPodcast!['summary'] ?? 'No summary available',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Description:',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          SelectableText(
-            generatedPodcast!['description'] ?? 'No description available',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          if (isLoading)
+            Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text(loadingMessage),
+              ],
+            )
+          else if (generatedPodcast != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  generatedPodcast!['title'] ?? 'No Title',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  generatedPodcast!['subtitle'] ?? 'No Subtitle',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                SizedBox(height: 16),
+                if (generatedPodcast!['audioData'] != null)
+                  AudioPlayerWidget(
+                    audioData: generatedPodcast!['audioData'],
+                    onPlayPressed: _logPlayedSampleEvent,
+                  ),
+                SizedBox(height: 16),
+                Text(
+                  'Summary:',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SelectableText(
+                  generatedPodcast!['summary'] ?? 'No summary available',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Description:',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SelectableText(
+                  generatedPodcast!['description'] ?? 'No description available',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            )
+          else
+            Text('Failed to generate sample. Please try again.'),
         ],
-      );
-    } else {
-      return Text('Failed to generate sample. Please try again.');
-    }
+      ),
+    );
   }
 }
