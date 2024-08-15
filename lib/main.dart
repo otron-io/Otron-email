@@ -8,8 +8,6 @@ import 'firebase_options.dart';
 import 'package:home/services/email_service.dart';
 import 'package:home/services/vertex_ai_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:home/pages/welcome_page.dart';
-import 'package:home/pages/podcast_list_page.dart';
 import 'package:home/pages/podcast_creation_page.dart';
 import 'package:home/theme/theme.dart';
 import 'package:http/http.dart' as http;
@@ -111,54 +109,21 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  void _navigateToPodcastList() {
-    setState(() {
-      _selectedIndex = 1;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          WelcomePage(onGetStarted: _navigateToPodcastList),
-          PodcastListPage(
-            onAddPodcast: widget.onAddPodcast,
-            podcasts: widget.podcasts,
-          ),
-          PodcastCreationPage(
-            onAddPodcast: (newPodcast) {
-              widget.onAddPodcast(newPodcast);
-              setState(() {
-                _selectedIndex = 1;
-              });
-            },
-          ),
-        ],
+      appBar: AppBar(
+        title: Text('Create Your Podcast'),
+        centerTitle: true,
       ),
-      bottomNavigationBar: NavigationBar(
-        onDestinationSelected: _onItemTapped,
-        selectedIndex: _selectedIndex,
-        destinations: [
-          NavigationDestination(
-            icon: Icon(Icons.home, color: appTheme.colorScheme.primary),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list, color: appTheme.colorScheme.primary),
-            label: 'Podcasts',
-          ),
-        ],
+      body: Center(
+        child: PodcastCreationPage(
+          onAddPodcast: (newPodcast) {
+            widget.onAddPodcast(newPodcast);
+            // You might want to add navigation logic here
+            print('New podcast created: $newPodcast');
+          },
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ class GenerateSampleWidget extends StatelessWidget {
   final String loadingMessage;
   final Map<String, dynamic>? generatedPodcast;
   final Function(dynamic) onStreamAudio;
+  final String generationDuration;
 
   const GenerateSampleWidget({
     Key? key,
@@ -14,6 +15,7 @@ class GenerateSampleWidget extends StatelessWidget {
     required this.loadingMessage,
     required this.generatedPodcast,
     required this.onStreamAudio,
+    required this.generationDuration,
   }) : super(key: key);
 
   void _logPlayedSampleEvent() async {
@@ -38,6 +40,7 @@ class GenerateSampleWidget extends StatelessWidget {
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
                 Text(loadingMessage),
+                Text('Duration: $generationDuration'),
               ],
             )
           else if (generatedPodcast != null)
@@ -77,6 +80,8 @@ class GenerateSampleWidget extends StatelessWidget {
                   generatedPodcast!['description'] ?? 'No description available',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                SizedBox(height: 16),
+                Text('Generation time: $generationDuration'),
               ],
             )
           else

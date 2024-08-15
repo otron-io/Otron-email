@@ -4,23 +4,30 @@ import 'package:home/services/email_service.dart';
 import 'package:html/parser.dart' as htmlparser;
 import 'dart:convert';
 import 'package:home/prompt.dart';
+import 'dart:async'; // Add this import
 
 class EmailList extends StatelessWidget {
   final List<Map<String, dynamic>> emails;
   final EmailService emailService;
+  final Duration fetchDuration;
 
   const EmailList({
     Key? key,
     required this.emails,
     required this.emailService,
+    required this.fetchDuration,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final fullPrompt = _generateFullPrompt();
+    final wordCount = _countWords(fullPrompt);
+
     return Column(
       children: [
+        _buildStatistics(context, wordCount),
         ElevatedButton(
-          onPressed: () => _copyPromptToClipboard(context),
+          onPressed: () => _copyPromptToClipboard(context, fullPrompt),
           child: Text('Copy Prompt with Emails'),
         ),
         Expanded(
@@ -36,20 +43,49 @@ class EmailList extends StatelessWidget {
     );
   }
 
-  Future<void> _copyPromptToClipboard(BuildContext context) async {
+  Widget _buildStatistics(BuildContext context, int wordCount) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Prompt Statistics:',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          SizedBox(height: 8),
+          Text('Number of emails: ${emails.length}'),
+          Text('Total word count: $wordCount'),
+          Text('Fetch duration: ${fetchDuration.inSeconds} seconds'),
+        ],
+      ),
+    );
+  }
+
+  String _generateFullPrompt() {
     final emailData = emails.map((email) => {
       'subject': email['subject'],
       'sender': email['from'],
       'body': _cleanEmailContent(email['body']),
     }).toList();
 
-    final fullPrompt = efficientDailyEmailSummaryPrompt.replaceAll(
+    return efficientDailyEmailSummaryPrompt.replaceAll(
       '{Placeholder for raw email data}',
       jsonEncode(emailData)
     );
+  }
 
+  int _countWords(String text) {
+    return text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).length;
+  }
+
+  Future<void> _copyPromptToClipboard(BuildContext context, String fullPrompt) async {
     try {
-      // Attempt to copy the entire prompt at once
       await Clipboard.setData(ClipboardData(text: fullPrompt));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Full prompt copied to clipboard')),

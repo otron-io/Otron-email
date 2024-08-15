@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:html/parser.dart' as htmlParser;
 import 'package:html/dom.dart' as dom;
+import 'dart:async'; // Add this import
 
 // --CLASS DEFINITION--
 class EmailService {
@@ -42,6 +43,7 @@ class EmailService {
 
   // --FETCH EMAILS METHOD--
   Future<List<Map<String, dynamic>>?> fetchEmails(List<String> domains, DateTimeRange? dateRange, String? toEmail, Function(int) updateProgress) async {
+    final stopwatch = Stopwatch()..start();
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signInSilently();
       if (account == null) {
@@ -84,7 +86,7 @@ class EmailService {
         if (response.messages != null) {
           final batchedEmails = await _fetchEmailsBatch(response.messages!);
           emailDetails.addAll(batchedEmails);
-          updateProgress(emailDetails.length);
+          updateProgress(emailDetails.length); // Update this line
         }
 
         pageToken = response.nextPageToken;
@@ -94,6 +96,8 @@ class EmailService {
     } catch (e) {
       print('Error fetching emails: $e');
       return null;
+    } finally {
+      stopwatch.stop();
     }
   }
 

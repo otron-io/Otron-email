@@ -23,6 +23,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
 import 'dart:math';
+import 'dart:async'; // Add this import
 
 // --PODCAST CREATION PAGE CLASS--
 class PodcastCreationPage extends StatefulWidget {
@@ -38,12 +39,10 @@ class PodcastCreationPage extends StatefulWidget {
 class _PodcastCreationPageState extends State<PodcastCreationPage> {
   final EmailService _emailService = EmailService();
   late final VertexAIService _vertexAIService;
-  int _currentStep = 0;
   bool _isLoading = false;
   String _loadingMessage = '';
   String _airDay = 'Sunday';
   List<Map<String, dynamic>> _fetchedEmails = [];
-  final bool _enableLastTwoSteps = false;
   Map<String, dynamic>? _generatedPodcast;
   List<String> _availableNewsletters = [];
   List<String> _selectedNewsletters = [];
@@ -53,6 +52,9 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   DateTimeRange? _selectedDateRange;
   String _selectedLanguage = 'English'; // Default language
   String? _toEmail;
+  bool _isFetchingEmails = false;
+  Duration _emailFetchDuration = Duration.zero; // Add this line
+  Duration _generationDuration = Duration.zero; // Add this line
 
   @override
   void initState() {
@@ -73,120 +75,52 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Schedule Weekly Podcast'),
-        centerTitle: true,
+        title: const Text('Create Podcast'),
         actions: [
           DropdownButton<String>(
             value: _selectedLanguage,
-            items: <String>['Lithuanian', 'English', 'Spanish'] // Add more languages as needed
+            items: <String>['Lithuanian', 'English', 'Spanish']
                 .map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text(value),
               );
             }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                _changeLanguage(newValue);
-              }
-            },
+            onChanged: _changeLanguage,
           ),
         ],
       ),
-      body: _isLoading
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text(_loadingMessage),
-              ],
-            ),
-          )
-        : SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 600),
-                child: Stepper(
-                  physics: ClampingScrollPhysics(),
-                  type: StepperType.vertical,
-                  currentStep: _currentStep,
-                  onStepContinue: () async {
-                    if (_currentStep == 0 && _selectedNewsletters.isNotEmpty) {
-                      await _showDataSourceDialog();
-                    } else if (_currentStep == 1) {
-                      setState(() {
-                        _currentStep += 1;
-                      });
-                      await _generateSamplePodcast();
-                    } else if (_currentStep == 2) {
-                      setState(() {
-                        _currentStep += 1;
-                      });
-                    } else if (_currentStep == 3) {
-                      await _updateRssFeed('default', _generatedPodcast!);
-                    }
-                  },
-                  onStepCancel: () {
-                    if (_currentStep > 0) {
-                      setState(() {
-                        _currentStep -= 1;
-                      });
-                    }
-                  },
-                  controlsBuilder: (BuildContext context, ControlsDetails details) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: Row(
-                        children: <Widget>[
-                          ElevatedButton(
-                            onPressed: details.onStepContinue,
-                            child: Text(_currentStep == 3 ? 'Finish' : 'Continue'),
-                          ),
-                          if (_currentStep > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: TextButton(
-                                onPressed: details.onStepCancel,
-                                child: const Text('Back'),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
-                  steps: [
-                    Step(
-                      title: const Text('Select Newsletters'),
-                      content: _buildNewsletterSelection(),
-                      isActive: _currentStep >= 0,
-                      state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-                    ),
-                    Step(
-                      title: const Text('Review Emails'),
-                      content: _buildEmailReview(),
-                      isActive: _currentStep >= 1,
-                      state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-                    ),
-                    Step(
-                      title: const Text('Generate Sample'),
-                      content: _buildGenerateSample(),
-                      isActive: _currentStep >= 2,
-                      state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-                    ),
-                    Step(
-                      title: const Text('Schedule Podcast'),
-                      content: _buildSchedulePodcastUI(),
-                      isActive: _currentStep >= 3,
-                      state: _currentStep > 3 ? StepState.complete : StepState.indexed,
-                    ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildNewsletterSelection(),
+              SizedBox(height: 16),
+              _buildDataSourceSelection(),
+              SizedBox(height: 16),
+              _buildEmailReview(),
+              SizedBox(height: 16),
+              _buildGenerateSampleButton(),
+              if (_isLoading) // Show loading indicator
+                Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 8),
+                    Text(_loadingMessage),
                   ],
                 ),
-              ),
-            ),
+              if (_generatedPodcast != null) ...[
+                SizedBox(height: 16),
+                _buildGeneratedPodcastPreview(),
+              ],
+              SizedBox(height: 16),
+              _buildSchedulePodcastButton(),
+            ],
           ),
+        ),
+      ),
     );
   }
 
@@ -221,65 +155,65 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     );
   }
 
-  Future<void> _showDataSourceDialog() async {
-    bool? result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Choose Data Source'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Do you want to use sample data or your Gmail account?'),
-              SizedBox(height: 16),
-              Text(
-                'To connect your Google account, you need to be added as a test user. Email arnoldas@otron.io to gain access.',
-                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
+  Widget _buildDataSourceSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Choose Data Source'),
+        SizedBox(height: 8),
+        Text(
+          'Do you want to use sample data or your Gmail account?',
+          style: TextStyle(fontSize: 16),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'To connect your Google account, you need to be added as a test user. Email arnoldas@otron.io to gain access.',
+          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _useSampleData = true;
+                });
+                _proceedWithoutGoogleSignIn();
+              },
               child: Text('Use Sample Data'),
-              onPressed: () => Navigator.of(context).pop(true),
             ),
-            TextButton(
+            SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _useSampleData = false;
+                });
+                _signInAndFetchEmails();
+              },
               child: Text('Use Gmail Account'),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(null),
             ),
           ],
-        );
-      },
+        ),
+        if (_isFetchingEmails)
+          Column(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 8),
+              Text('Fetching emails... $_loadingMessage'),
+              Text('Duration: ${_emailFetchDuration.inSeconds} seconds'),
+            ],
+          ),
+      ],
     );
-
-    if (result != null) {
-      setState(() {
-        _useSampleData = result;
-        if (result) {
-          _proceedWithoutGoogleSignIn();
-        } else {
-          _signInAndFetchEmails();
-        }
-      });
-    } else {
-      // User cancelled, reset to step 0
-      setState(() {
-        _currentStep = 0;
-      });
-    }
   }
 
   Future<void> _signInAndFetchEmails() async {
     setState(() {
-      _isLoading = true;
+      _isFetchingEmails = true;
       _loadingMessage = 'Signing in...';
     });
+
+    final stopwatch = Stopwatch()..start();
 
     try {
       bool isSignedIn = await _emailService.isSignedIn();
@@ -294,15 +228,15 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
         await _fetchEmails();
         if (_fetchedEmails.isNotEmpty) {
           setState(() {
-            _currentStep += 1;
-            _isLoading = false;
+            _isFetchingEmails = false;
+            _emailFetchDuration = stopwatch.elapsed;
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('No emails found. Please try again.')),
           );
           setState(() {
-            _isLoading = false;
+            _isFetchingEmails = false;
           });
         }
       } else {
@@ -311,12 +245,14 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     } catch (e) {
       print('Error signing in or fetching emails: $e');
       _showSignupDialog();
+    } finally {
+      stopwatch.stop();
     }
   }
 
   void _showSignupDialog() {
     setState(() {
-      _isLoading = false;
+      _isFetchingEmails = false;
     });
     showDialog(
       context: context,
@@ -348,7 +284,6 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
   void _proceedWithoutGoogleSignIn() {
     // Proceed to the next step with sample emails
     setState(() {
-      _currentStep += 1;
       _fetchedEmails = [
         {
           'subject': 'This Week in Tech: AI Breakthroughs and Privacy Concerns',
@@ -455,23 +390,18 @@ The Gourmet Gazette Team
       height: 400,
       child: _fetchedEmails.isEmpty
         ? Center(child: Text('No emails fetched. Please try again.'))
-        : EmailList(
+        : EmailReviewWidget(
             emails: _fetchedEmails,
             emailService: _emailService,
+            fetchDuration: _emailFetchDuration, // Pass the fetch duration here
           ),
     );
   }
 
-  Widget _buildGenerateSample() {
-    return GenerateSampleWidget(
-      isLoading: _isLoading,
-      loadingMessage: _loadingMessage,
-      generatedPodcast: _generatedPodcast,
-      onStreamAudio: (audioPath) {
-        setState(() {
-          _generatedPodcast!['audioPath'] = audioPath;
-        });
-      },
+  Widget _buildGenerateSampleButton() {
+    return ElevatedButton(
+      onPressed: _generateSamplePodcast,
+      child: Text('Generate Sample Podcast'),
     );
   }
 
@@ -483,10 +413,18 @@ The Gourmet Gazette Team
       _loadingMessage = 'Analyzing your emails...';
     });
 
+    final stopwatch = Stopwatch()..start();
+
     try {
       final fullPrompt = await _prepareEmailData();
+      setState(() {
+        _loadingMessage = 'Generating content...';
+      });
       final generatedDescription = await _vertexAIService.generateContent(fullPrompt);
       final urls = _extractUrls(_fetchedEmails);
+      setState(() {
+        _loadingMessage = 'Generating summary...';
+      });
       final generatedSummary = await _vertexAIService.generateSummary(generatedDescription, urls);
 
       // Generate the dateRangeString
@@ -499,9 +437,15 @@ The Gourmet Gazette Team
         dateRangeString = DateFormat('MMMM d, yyyy').format(DateTime.now());
       }
 
+      setState(() {
+        _loadingMessage = 'Generating title...';
+      });
       final generatedTitle = await _vertexAIService.generatePodcastTitle(generatedDescription, dateRangeString);
 
       // Generate image
+      setState(() {
+        _loadingMessage = 'Generating image...';
+      });
       final imagePrompt = await _vertexAIService.generateImagePrompt(generatedDescription);
       final imageUrl = await _generateImage(imagePrompt);
 
@@ -545,6 +489,7 @@ The Gourmet Gazette Team
               'imageUrl': imageUrl,
             };
             _isLoading = false;
+            _generationDuration = stopwatch.elapsed;
           }
         });
 
@@ -571,6 +516,8 @@ The Gourmet Gazette Team
           _isLoading = false;
         });
       }
+    } finally {
+      stopwatch.stop();
     }
   }
 
@@ -617,7 +564,7 @@ The Gourmet Gazette Team
     }
   }
 
-  Widget _buildSchedulePodcastUI() {
+  Widget _buildGeneratedPodcastPreview() {
     final now = DateTime.now();
     final dateFormat = DateFormat('MMMM d, yyyy');
     final todayDate = dateFormat.format(now);
@@ -628,11 +575,39 @@ The Gourmet Gazette Team
       'subtitle': todayDate,
     };
 
-    return SchedulePodcastWidget(
-      podcastData: prefilledPodcastData,
-      onSchedule: _updateRssFeed,
-      selectedDateRange: _selectedDateRange,
-      language: _selectedLanguage,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SchedulePodcastWidget(
+          podcastData: prefilledPodcastData,
+          onSchedule: _updateRssFeed,
+          selectedDateRange: _selectedDateRange,
+          language: _selectedLanguage,
+        ),
+        if (_generatedPodcast != null && _generatedPodcast!['audioData'] != null)
+          Column(
+            children: [
+              SizedBox(height: 16),
+              Text(
+                'Audio Preview:',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              AudioPlayerWidget(
+                audioData: _generatedPodcast!['audioData'],
+                onPlayPressed: () {
+                  print('Audio started playing');
+                },
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSchedulePodcastButton() {
+    return ElevatedButton(
+      onPressed: () => _updateRssFeed('default', _generatedPodcast!),
+      child: Text('Schedule Podcast'),
     );
   }
 
@@ -720,12 +695,14 @@ The Gourmet Gazette Team
     return days.indexOf(day) + 1;
   }
 
-  void _changeLanguage(String newLanguage) {
-    setState(() {
-      _selectedLanguage = newLanguage;
-      _vertexAIService = VertexAIService(language: _selectedLanguage);
-    });
-    // You might want to regenerate content or update other language-dependent components here
+  void _changeLanguage(String? newLanguage) {
+    if (newLanguage != null) {
+      setState(() {
+        _selectedLanguage = newLanguage;
+        _vertexAIService = VertexAIService(language: _selectedLanguage);
+      });
+      // You might want to regenerate content or update other language-dependent components here
+    }
   }
 }
 
