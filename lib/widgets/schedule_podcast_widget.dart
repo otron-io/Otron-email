@@ -3,6 +3,8 @@ import 'package:home/utils/storage_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SchedulePodcastWidget extends StatefulWidget {
   final Map<String, dynamic> podcastData;
@@ -127,7 +129,6 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
       );
 
       await widget.onSchedule(_selectedRssFeed!, newItem);
-
     } catch (e) {
       print('Error scheduling podcast: $e');
       if (!_mounted) return;
@@ -195,6 +196,38 @@ class _SchedulePodcastWidgetState extends State<SchedulePodcastWidget> {
             _buildTextField(_descriptionController, 'Description', maxLines: 3),
             _buildTextField(_audioUrlController, 'Audio URL'),
             _buildTextField(_durationController, 'Duration (HH:MM:SS)'),
+            if (widget.podcastData['imageUrl'] != null) ...[
+              SizedBox(height: 16),
+              Text('Generated Image:'),
+              SizedBox(height: 8),
+              CachedNetworkImage(
+                imageUrl: widget.podcastData['imageUrl'],
+                placeholder: (context, url) => CircularProgressIndicator(),
+                errorWidget: (context, url, error) => InkWell(
+                  onTap: () async {
+                    final url = widget.podcastData['imageUrl'];
+                    if (await canLaunch(url)) {
+                      await launch(url);
+                    }
+                  },
+                  child: Text(
+                    'Failed to load image. Click here to view.',
+                    style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                  ),
+                ),
+              ),
+              SizedBox(height: 8),
+              SelectableText(
+                widget.podcastData['imageUrl'],
+                style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                onTap: () async {
+                  final url = widget.podcastData['imageUrl'];
+                  if (await canLaunch(url)) {
+                    await launch(url);
+                  }
+                },
+              ),
+            ],
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: _isLoading ? null : _schedulePodcast,

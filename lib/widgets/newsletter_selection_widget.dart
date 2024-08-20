@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class NewsletterSelectionWidget extends StatefulWidget {
   final List<String> availableNewsletters;
@@ -28,6 +29,7 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
   String _selectedDateOption = 'Last 7 days';
   DateTimeRange? _customDateRange;
   late TextEditingController _toEmailController;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -42,15 +44,19 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
   void dispose() {
     _searchController.dispose();
     _toEmailController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
   void _filterItems(String query) {
-    setState(() {
-      _filteredItems = widget.availableNewsletters
-          .where((item) => item.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-      _customItem = query;
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        _filteredItems = widget.availableNewsletters
+            .where((item) => item.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+        _customItem = query;
+      });
     });
   }
 
@@ -66,107 +72,43 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
     }
   }
 
-  void _updateDateRange() {
-    DateTimeRange? newRange;
-    switch (_selectedDateOption) {
-      case 'Today':
-        final now = DateTime.now();
-        newRange = DateTimeRange(start: now, end: now);
-        break;
-      case 'Last 7 days':
-        final now = DateTime.now();
-        newRange = DateTimeRange(start: now.subtract(Duration(days: 7)), end: now);
-        break;
-      case 'Last 30 days':
-        final now = DateTime.now();
-        newRange = DateTimeRange(start: now.subtract(Duration(days: 30)), end: now);
-        break;
-      case 'Custom range':
-        newRange = _customDateRange;
-        break;
-    }
-    widget.onDateRangeChanged(newRange);
-  }
-
-  Widget _buildNewsletterChip(String newsletter) {
-    String label = newsletter == '*@*' ? 'All Newsletters' : newsletter;
-    return FilterChip(
-      label: Text(label),
-      selected: _selectedItems.contains(newsletter),
-      onSelected: (bool selected) {
-        setState(() {
-          if (selected) {
-            if (newsletter == '*@*') {
-              _selectedItems = ['*@*'];
-            } else {
-              _selectedItems.remove('*@*');
-              _selectedItems.add(newsletter);
-            }
-          } else {
-            _selectedItems.remove(newsletter);
-          }
-          widget.onChanged(_selectedItems);
-        });
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Select Newsletters or Add Custom Domains',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search or add newsletter/domain',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onChanged: _filterItems,
-                onSubmitted: (_) => _addCustomItem(),
-              ),
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Search newsletters...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: _addCustomItem,
-              child: Text('Add'),
-            ),
-          ],
+          ),
+          onChanged: _filterItems,
         ),
         const SizedBox(height: 16),
-        Text(
-          'Available Newsletters and Custom Items',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 4,
-          children: [
-            _buildNewsletterChip('*@*'),
-            ..._filteredItems.where((item) => item != '*@*').map((item) => _buildNewsletterChip(item)),
-            if (_customItem.isNotEmpty && !_filteredItems.contains(_customItem))
-              FilterChip(
-                label: Text(_customItem),
-                selected: false,
-                onSelected: (_) => _addCustomItem(),
-              ),
-          ],
+          children: _filteredItems.map((item) => InputChip(
+            label: Text(item),
+            onSelected: (selected) {
+              setState(() {
+                if (selected) {
+                  _selectedItems.add(item);
+                } else {
+                  _selectedItems.remove(item);
+                }
+                widget.onChanged(_selectedItems);
+              });
+            },
+            selected: _selectedItems.contains(item),
+          )).toList(),
         ),
         const SizedBox(height: 16),
         Text(
-          'Select Date Range',
+          'Date Range',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
@@ -243,5 +185,22 @@ class _NewsletterSelectionWidgetState extends State<NewsletterSelectionWidget> {
         ),
       ],
     );
+  }
+
+  void _updateDateRange() {
+    if (_selectedDateOption == 'Custom range') {
+      widget.onDateRangeChanged(_customDateRange);
+    } else {
+      DateTime now = DateTime.now();
+      DateTime startDate;
+      if (_selectedDateOption == 'Today') {
+        startDate = now;
+      } else if (_selectedDateOption == 'Last 7 days') {
+        startDate = now.subtract(Duration(days: 7));
+      } else {
+        startDate = now.subtract(Duration(days: 30));
+      }
+      widget.onDateRangeChanged(DateTimeRange(start: startDate, end: now));
+    }
   }
 }

@@ -43,6 +43,9 @@ class VertexAIService {
       prompt = _replaceLanguagePlaceholder(prompt);
       print('Sending prompt to model: ${prompt.substring(0, min(100, prompt.length))}...');
 
+      // Log the full prompt for debugging
+      print('Full prompt: $prompt');
+
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
       
@@ -51,7 +54,7 @@ class VertexAIService {
         return response.text!;
       } else {
         print('No content generated');
-        return 'No content generated';
+        return 'Error: No content generated';
       }
     } catch (e) {
       print('Error generating content: $e');
@@ -87,6 +90,9 @@ Please provide the summary without any additional explanations or meta-commentar
 Answer in the {language} only.
 ''');
 
+      // Log the full prompt for debugging
+      print('Full summary prompt: $prompt');
+
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
       
@@ -95,11 +101,11 @@ Answer in the {language} only.
         return response.text!;
       } else {
         print('No summary generated');
-        return 'No summary generated';
+        return 'Error: No summary generated';
       }
     } catch (e) {
       print('Error generating summary: $e');
-      return 'Error generating summary';
+      return 'Error generating summary: $e';
     }
   }
 
@@ -110,6 +116,9 @@ ${podcastTitlePrompt.replaceAll('{Placeholder for description}', description).re
 IMPORTANT: Return ONLY the generated title, without any explanations or additional text. The title should be a single line, concise, and no longer than 10 words.
 ''');
 
+    // Log the full prompt for debugging
+    print('Full title prompt: $prompt');
+
     final content = [Content.text(prompt)];
     final response = await _model.generateContent(content);
     
@@ -119,13 +128,16 @@ IMPORTANT: Return ONLY the generated title, without any explanations or addition
       return title;
     } else {
       print('No podcast title generated');
-      throw Exception('Failed to generate podcast title');
+      return 'Error: No podcast title generated';
     }
   }
 
   Future<String> generateImagePrompt(String fullDescription) async {
     final prompt = _replaceLanguagePlaceholder(imagePrompt.replaceAll('{Placeholder for transcript}', fullDescription));
     
+    // Log the full prompt for debugging
+    print('Full image prompt: $prompt');
+
     final content = [Content.text(prompt)];
     final response = await _model.generateContent(content);
     
@@ -134,7 +146,7 @@ IMPORTANT: Return ONLY the generated title, without any explanations or addition
       return response.text!;
     } else {
       print('No image prompt generated');
-      throw Exception('Failed to generate image prompt');
+      return 'Error: No image prompt generated';
     }
   }
 }

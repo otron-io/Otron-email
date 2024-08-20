@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:home/widgets/audio_player_widget.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class GenerateSampleWidget extends StatelessWidget {
   final bool isLoading;
   final String loadingMessage;
   final Map<String, dynamic>? generatedPodcast;
-  final Function(dynamic) onStreamAudio;
   final String generationDuration;
 
   const GenerateSampleWidget({
@@ -14,7 +12,6 @@ class GenerateSampleWidget extends StatelessWidget {
     required this.isLoading,
     required this.loadingMessage,
     required this.generatedPodcast,
-    required this.onStreamAudio,
     required this.generationDuration,
   }) : super(key: key);
 
@@ -56,12 +53,6 @@ class GenerateSampleWidget extends StatelessWidget {
                   generatedPodcast!['subtitle'] ?? 'No Subtitle',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                SizedBox(height: 16),
-                if (generatedPodcast!['audioData'] != null)
-                  AudioPlayerWidget(
-                    audioData: generatedPodcast!['audioData'],
-                    onPlayPressed: _logPlayedSampleEvent,
-                  ),
                 SizedBox(height: 16),
                 Text(
                   'Summary:',

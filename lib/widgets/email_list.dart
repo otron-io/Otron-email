@@ -4,9 +4,10 @@ import 'package:home/services/email_service.dart';
 import 'package:html/parser.dart' as htmlparser;
 import 'dart:convert';
 import 'package:home/prompt.dart';
-import 'dart:async'; // Add this import
+import 'dart:async';
+import 'package:flutter/scheduler.dart';
 
-class EmailList extends StatelessWidget {
+class EmailList extends StatefulWidget {
   final List<Map<String, dynamic>> emails;
   final EmailService emailService;
   final Duration fetchDuration;
@@ -17,6 +18,32 @@ class EmailList extends StatelessWidget {
     required this.emailService,
     required this.fetchDuration,
   }) : super(key: key);
+
+  @override
+  _EmailListState createState() => _EmailListState();
+}
+
+class _EmailListState extends State<EmailList> {
+  static const int _pageSize = 20;
+  int _currentPage = 0;
+  List<Map<String, dynamic>> _displayedEmails = [];
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _loadMoreEmails();
+    });
+  }
+
+  void _loadMoreEmails() {
+    setState(() {
+      final start = _currentPage * _pageSize;
+      final end = (start + _pageSize).clamp(0, widget.emails.length);
+      _displayedEmails.addAll(widget.emails.sublist(start, end));
+      _currentPage++;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +59,19 @@ class EmailList extends StatelessWidget {
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: emails.length,
+            itemCount: _displayedEmails.length + 1,
             itemBuilder: (context, index) {
-              final email = emails[index];
-              return _buildEmailListItem(context, email);
+              if (index == _displayedEmails.length) {
+                if (_displayedEmails.length < widget.emails.length) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    _loadMoreEmails();
+                  });
+                  return Center(child: CircularProgressIndicator());
+                } else {
+                  return SizedBox.shrink();
+                }
+              }
+              return _buildEmailListItem(context, _displayedEmails[index]);
             },
           ),
         ),
@@ -59,16 +95,16 @@ class EmailList extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           SizedBox(height: 8),
-          Text('Number of emails: ${emails.length}'),
+          Text('Number of emails: ${widget.emails.length}'),
           Text('Total word count: $wordCount'),
-          Text('Fetch duration: ${fetchDuration.inSeconds} seconds'),
+          Text('Fetch duration: ${widget.fetchDuration.inSeconds} seconds'),
         ],
       ),
     );
   }
 
   String _generateFullPrompt() {
-    final emailData = emails.map((email) => {
+    final emailData = widget.emails.map((email) => {
       'subject': email['subject'],
       'sender': email['from'],
       'body': _cleanEmailContent(email['body']),
@@ -99,33 +135,18 @@ class EmailList extends StatelessWidget {
   }
 
   String _cleanEmailContent(String htmlContent) {
-    // Parse HTML content
     final document = htmlparser.parse(htmlContent);
-    
-    // Extract text content
     String textContent = document.body?.text ?? '';
     
-    // Remove unnecessary whitespace and newlines
-    textContent = textContent.replaceAll(RegExp(r'\s+'), ' ').trim();
+    textContent = textContent
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'[-—=_]{3,}'), '')
+      .replaceAll(RegExp(r'https?://\S+'), '')
+      .replaceAll(RegExp(r'\S+@\S+'), '')
+      .replaceAll(RegExp(r'[^\w\s.,!?]'), '')
+      .trim();
     
-    // Remove common separator patterns
-    textContent = textContent.replaceAll(RegExp(r'[-—=_]{3,}'), '');
-    
-    // Remove URLs
-    textContent = textContent.replaceAll(RegExp(r'https?://\S+'), '');
-    
-    // Remove email addresses
-    textContent = textContent.replaceAll(RegExp(r'\S+@\S+'), '');
-    
-    // Remove any remaining special characters
-    textContent = textContent.replaceAll(RegExp(r'[^\w\s.,!?]'), '');
-    
-    // Truncate to a longer length (e.g., 2000 characters)
-    if (textContent.length > 2000) {
-      textContent = textContent.substring(0, 1997) + '...';
-    }
-    
-    return textContent;
+    return textContent.length > 2000 ? textContent.substring(0, 1997) + '...' : textContent;
   }
 
   Widget _buildEmailListItem(BuildContext context, Map<String, dynamic> email) {

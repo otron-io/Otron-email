@@ -1,6 +1,6 @@
 // --IMPORTS--
-import 'dart:typed_data'; // Add this import for Uint8List
-import 'dart:convert';  // Add this import for utf8 and base64Url
+import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/gmail/v1.dart';
@@ -8,8 +8,7 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:html/parser.dart' as htmlParser;
-import 'package:html/dom.dart' as dom;
-import 'dart:async'; // Add this import
+import 'dart:async';
 
 // --CLASS DEFINITION--
 class EmailService {
@@ -103,62 +102,29 @@ class EmailService {
 
   Future<List<Map<String, dynamic>>> _fetchEmailsBatch(List<Message> messages) async {
     final batch = http.Client();
-    final futures = messages.map((message) async {
-      final url = 'https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}';
-      final response = await batch.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $_accessToken',
-        },
-      );
-      if (response.statusCode == 200) {
-        final msg = Message.fromJson(json.decode(response.body));
-        return _parseMessage(msg);
-      }
-      return null;
-    }).toList();
-
+    final futures = messages.map((message) => _fetchSingleEmail(batch, message.id!)).toList();
     final results = await Future.wait(futures);
     batch.close();
     return results.whereType<Map<String, dynamic>>().toList();
   }
 
-  String _buildDomainQuery(List<String> domains) {
-    if (domains.contains('All newsletters') || domains.contains('*@*')) {
-      return '';
+  Future<Map<String, dynamic>?> _fetchSingleEmail(http.Client client, String messageId) async {
+    final url = 'https://www.googleapis.com/gmail/v1/users/me/messages/$messageId';
+    final response = await client.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Bearer $_accessToken'},
+    );
+    if (response.statusCode == 200) {
+      final msg = Message.fromJson(json.decode(response.body));
+      return _parseMessage(msg);
     }
-    return domains.map((domain) {
-      if (domain.contains('*')) {
-        return 'from:(*@${domain.replaceAll('*', '')})';
-      } else {
-        return 'from:(*@$domain)';
-      }
-    }).join(' OR ');
+    return null;
   }
 
-  String _buildDateQuery(DateTimeRange? dateRange) {
-    if (dateRange == null) return '';
-    final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
-    final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
-    return ' after:$startDate before:$endDate';
-  }
-
-  String _buildToEmailQuery(String? toEmail) {
-    if (toEmail == null || toEmail.isEmpty) return '';
-    return ' to:$toEmail';
-  }
-
-  // --PARSE MESSAGE METHOD--
   Map<String, dynamic> _parseMessage(Message msg) {
     final headers = msg.payload?.headers;
-    final fromHeader = headers?.firstWhere(
-      (h) => h.name == 'From',
-      orElse: () => MessagePartHeader(name: 'From', value: 'Unknown'),
-    ).value ?? 'Unknown';
-    final subjectHeader = headers?.firstWhere(
-      (h) => h.name == 'Subject',
-      orElse: () => MessagePartHeader(name: 'Subject', value: 'No Subject'),
-    ).value ?? 'No Subject';
+    final fromHeader = headers?.firstWhere((h) => h.name == 'From', orElse: () => MessagePartHeader())?.value ?? 'Unknown';
+    final subjectHeader = headers?.firstWhere((h) => h.name == 'Subject', orElse: () => MessagePartHeader())?.value ?? 'No Subject';
 
     final body = _getBody(msg.payload);
     final images = _extractImagesFromHtml(body);
@@ -260,5 +226,30 @@ class EmailService {
     final proxyUrl = '$baseUrl/proxy_image';
     final encodedUrl = Uri.encodeComponent(originalUrl);
     return '$proxyUrl?url=$encodedUrl';
+  }
+
+  String _buildDomainQuery(List<String> domains) {
+    if (domains.contains('All newsletters') || domains.contains('*@*')) {
+      return '';
+    }
+    return domains.map((domain) {
+      if (domain.contains('*')) {
+        return 'from:(*@${domain.replaceAll('*', '')})';
+      } else {
+        return 'from:(*@$domain)';
+      }
+    }).join(' OR ');
+  }
+
+  String _buildDateQuery(DateTimeRange? dateRange) {
+    if (dateRange == null) return '';
+    final startDate = dateRange.start.toUtc().toIso8601String().split('T')[0];
+    final endDate = dateRange.end.add(Duration(days: 1)).toUtc().toIso8601String().split('T')[0];
+    return ' after:$startDate before:$endDate';
+  }
+
+  String _buildToEmailQuery(String? toEmail) {
+    if (toEmail == null || toEmail.isEmpty) return '';
+    return ' to:$toEmail';
   }
 }
