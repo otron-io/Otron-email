@@ -11,12 +11,14 @@ class EmailList extends StatefulWidget {
   final List<Map<String, dynamic>> emails;
   final EmailService emailService;
   final Duration fetchDuration;
+  final String selectedLanguage; // Add this line
 
   const EmailList({
     Key? key,
     required this.emails,
     required this.emailService,
     required this.fetchDuration,
+    required this.selectedLanguage, // Add this line
   }) : super(key: key);
 
   @override
@@ -110,10 +112,9 @@ class _EmailListState extends State<EmailList> {
       'body': _cleanEmailContent(email['body']),
     }).toList();
 
-    return efficientDailyEmailSummaryPrompt.replaceAll(
-      '{Placeholder for raw email data}',
-      jsonEncode(emailData)
-    );
+    return efficientDailyEmailSummaryPrompt
+      .replaceAll('{Placeholder for raw email data}', jsonEncode(emailData))
+      .replaceAll('{language}', widget.selectedLanguage); // Add this line
   }
 
   int _countWords(String text) {

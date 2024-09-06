@@ -39,7 +39,7 @@ class PodcastCreationPage extends StatefulWidget {
 // --PODCAST CREATION PAGE STATE CLASS--
 class _PodcastCreationPageState extends State<PodcastCreationPage> {
   final EmailService _emailService = EmailService();
-  late final VertexAIService _vertexAIService;
+  late VertexAIService _vertexAIService;
   bool _isLoading = false;
   String _loadingMessage = '';
   String _airDay = 'Sunday';
@@ -75,11 +75,18 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
 
   @override
   Widget build(BuildContext context) {
+    print("Building PodcastCreationPage"); // Add this line
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Podcast'),
         actions: [
           _buildLanguageDropdown(),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/customer');
+            },
+            child: Text('Customer Page'),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -317,10 +324,12 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
       child: _fetchedEmails.isEmpty
           ? Center(child: Text('No emails fetched. Please try again.'))
           : EmailReviewWidget(
+              key: ValueKey(_selectedLanguage),
               emails: _fetchedEmails,
               emailService: _emailService,
               fetchDuration: _emailFetchDuration,
               onRefresh: _fetchEmails,
+              selectedLanguage: _selectedLanguage,
             ),
     );
   }
@@ -606,8 +615,12 @@ class _PodcastCreationPageState extends State<PodcastCreationPage> {
     if (newLanguage != null) {
       setState(() {
         _selectedLanguage = newLanguage;
-        _vertexAIService = VertexAIService(language: _selectedLanguage);
+        _vertexAIService.updateLanguage(newLanguage);
       });
+      // Add this line to regenerate the sample podcast when language changes
+      if (_fetchedEmails.isNotEmpty) {
+        _generateSamplePodcast();
+      }
     }
   }
 

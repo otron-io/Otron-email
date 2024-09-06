@@ -1,4 +1,3 @@
-// --IMPORTS--
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart'; // Add this import
@@ -15,6 +14,11 @@ import 'package:home/podcasts.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import 'package:xml/xml.dart';
+import 'package:home/pages/customer_page.dart';
+import 'package:home/routes.dart'; // New import for routes
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:home/pages/privacy_policy_page.dart'; // Add this import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +40,10 @@ void main() async {
 
     // Initialize Firebase Analytics
     FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+
+    // Initialize Firebase Auth and Firestore
+    FirebaseAuth.instance;
+    FirebaseFirestore.instance;
 
     // Rest of your initialization code...
   } catch (e) {
@@ -69,7 +77,13 @@ class _MyAppState extends State<MyApp> {
       scrollBehavior: MyCustomScrollBehavior(),
       title: 'Otron Email',
       theme: appTheme,
-      home: HomePage(podcasts: _podcasts, onAddPodcast: addPodcast),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => CustomerPage(),
+        '/admin': (context) => PodcastCreationPage(onAddPodcast: addPodcast),
+        '/privacy-policy': (context) => PrivacyPolicyPage(), // Add this line
+      },
+      navigatorObservers: [MyRouteObserver()],
     );
   }
 
@@ -88,46 +102,20 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
   }
 }
 
-Future<String> callHelloWorldFunction() async {
-  final url = 'https://hello-world-2ghwz42v7q-uc.a.run.app';
-  final response = await http.get(Uri.parse(url));
-  if (response.statusCode == 200) {
-    return response.body;
-  } else {
-    throw Exception('Failed to call Hello World function');
-  }
-}
-
-class HomePage extends StatefulWidget {
-  final List<Map<String, dynamic>> podcasts;
-  final Function(Map<String, dynamic>) onAddPodcast;
-
-  const HomePage({Key? key, required this.podcasts, required this.onAddPodcast}) : super(key: key);
-
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Create Your Podcast'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: PodcastCreationPage(
-          onAddPodcast: (newPodcast) {
-            widget.onAddPodcast(newPodcast);
-            // You might want to add navigation logic here
-            print('New podcast created: $newPodcast');
-          },
-        ),
-      ),
-    );
-  }
-}
+// Remove or comment out this HomePage class
+// class HomePage extends StatelessWidget {
+//   final List<Map<String, dynamic>> podcasts;
+//   final Function(Map<String, dynamic>) onAddPodcast;
+//
+//   const HomePage({Key? key, required this.podcasts, required this.onAddPodcast}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return PodcastCreationPage(
+//       onAddPodcast: onAddPodcast,
+//     );
+//   }
+// }
 
 class RssGenerator {
   static String generateRssFeed(List<Map<String, String>> items) {
@@ -196,5 +184,22 @@ class RssUploadWidget extends StatelessWidget {
         }
       },
     );
+  }
+}
+
+class MyRouteObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    print('Pushed route: ${route.settings.name}');
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    print('Replaced route: ${newRoute?.settings.name}');
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    print('Popped route: ${route.settings.name}');
   }
 }

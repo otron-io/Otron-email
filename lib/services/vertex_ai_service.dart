@@ -6,11 +6,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class VertexAIService {
+  String _language;
   late final GenerativeModel _model;
-  final String language;
 
-  VertexAIService({required this.language}) {
+  VertexAIService({required String language}) : _language = language {
     _initializeModel();
+  }
+
+  void updateLanguage(String newLanguage) {
+    _language = newLanguage;
   }
 
   Future<void> _initializeModel() async {
@@ -30,7 +34,7 @@ class VertexAIService {
   }
 
   String _replaceLanguagePlaceholder(String prompt) {
-    return prompt.replaceAll('{language}', language);
+    return prompt.replaceAll('{language}', _language);
   }
 
   Future<String> generateContent(String prompt) async {

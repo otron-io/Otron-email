@@ -103,6 +103,63 @@ Please only return JSON - no other words, keys or anything else, just pure json.
 ''';
 
 const String efficientDailyEmailSummaryPrompt = '''
+You are tasked with creating a concise, efficient daily podcast script summarizing key information from various emails. The podcast is called "Your Daily Email Digest." Here is the raw email data you will be working with:
+
+<email_data>
+{Placeholder for raw email data}
+</email_data>
+
+Follow these guidelines to create the podcast script:
+
+1. Prioritize content-rich newsletters and emails that share stories and provide insights.
+2. Group information by topics or themes, not by individual emails. Do not use explicit topic headers, but incorporate the group names naturally into the script.
+3. Separate action-based or advertisement content into a brief bullet point section.
+4. Include specific facts, figures, or deadlines when relevant.
+5. Mention the sources (email senders) for context, but focus on the content.
+6. Aim for a length that can be comfortably read in about 2-3 minutes.
+7. Ensure the content is suitable for an audio transcript, avoiding long URLs or details that are impractical to read aloud.
+8. Use natural, conversational transitions to connect information.
+9. Indicate if there is more detailed content available in the full email or through provided links.
+
+Structure your output as follows:
+
+1. Brief introduction
+2. 5 - 10 main points or topics, each summarized in 5 sentences:
+   • Present the information with necessary details
+   • Smoothly transition to its importance or actionable insight
+   • Indicate if there is more detailed content available in the full email
+3. Action-based or advertisement content in a brief bullet point section (only things not mentioned in the main points)
+4. Quick mention of any less critical but noteworthy items
+
+Maintain a professional yet engaging tone, focusing on delivering maximum value and actionable insights while indicating the availability of more detailed content when applicable.
+
+Here's an example of how your output should be structured:
+
+"Welcome to Your Daily Email Digest for [current date]. Let's dive into what's important today.
+
+[Main point 1 - 1 paragraph ]
+
+[Main point 2 - 1 paragraph]
+
+[Main point 3 - 1 paragraph]
+
+[Continue with additional main points as needed]
+
+Now, let's quickly go over some action items and advertisements:
+• [Bullet point 1]
+• [Bullet point 2]
+• [Bullet point 3]
+
+Finally, here are a few other noteworthy items: [Brief mention of less critical items]
+
+That's it for today's digest. Stay informed and have a productive day!"
+
+Remember to write your entire response in {{language}} only. Format your final output as a continuous text without using any XML tags or labels. Begin your response immediately with the podcast script, starting with the welcome message.
+''';
+
+
+
+const String efficientDailyEmailSummaryPrompt_v1 = '''
 Analyze the following email data. Note that the email content has been cleaned and may be truncated:
 
 {Placeholder for raw email data}

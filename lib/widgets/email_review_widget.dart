@@ -6,7 +6,8 @@ class EmailReviewWidget extends StatelessWidget {
   final List<Map<String, dynamic>> emails;
   final EmailService emailService;
   final Duration fetchDuration;
-  final VoidCallback onRefresh;
+  final Function onRefresh;
+  final String selectedLanguage; // Add this line
 
   const EmailReviewWidget({
     Key? key,
@@ -14,31 +15,16 @@ class EmailReviewWidget extends StatelessWidget {
     required this.emailService,
     required this.fetchDuration,
     required this.onRefresh,
+    required this.selectedLanguage, // Add this line
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 400,
-      child: emails.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('No emails fetched.'),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: onRefresh,
-                    child: Text('Refresh'),
-                  ),
-                ],
-              ),
-            )
-          : EmailList(
-              emails: emails,
-              emailService: emailService,
-              fetchDuration: fetchDuration,
-            ),
+    return EmailList(
+      emails: emails,
+      emailService: emailService,
+      fetchDuration: fetchDuration,
+      selectedLanguage: selectedLanguage, // Add this line
     );
   }
 }
